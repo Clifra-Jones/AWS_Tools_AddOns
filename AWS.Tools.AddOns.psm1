@@ -19,19 +19,35 @@ function Get-S3Folder () {
     $s3Folders = ($AWSHistory.LastCommand.Responses.History).CommonPrefixes
     if ($Files) {
         foreach ($s3File in $s3Files) {
-            $result.add($s3File.key)
+            $result.add(
+                [PSCustomObject]@{
+                    Key = $S3File.Key
+                }
+            )
         }
     } elseif ($Folders) {
         foreach ($s3Folder in $s3Folders) {
-            $result.Add($s3Folder)
+            $result.Add(
+                [PCCustomObject]@{
+                    Key = $S3File.Key
+                }
+            )
         }
     } else {
         foreach ($s3File in $s3Files) {
-            $result.add($s3File.key)
+            $result.add(
+                [PCCustomObject]@{
+                    Key = $S3File.Key
+                }                
+            )
         }
         foreach ($s3Folder in $s3Folders) {
-            $result.Add($s3Folder)
+            $result.Add(
+                [PCCustomObject]@{
+                    Key = $S3File.Key
+                }
+            )
         }
     }
-    return $result.ToArray()    
+    return $result.ToArray() | Sort-Object -Property Key
 }
