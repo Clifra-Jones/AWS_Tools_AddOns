@@ -12,7 +12,7 @@ function Get-S3Folder () {
         Set-AWSHistoryConfiguration -MaxServiceCallHistory $MaxServiceCallHistory
     }
 
-    $result = [System.Collections.Generic.List[string]]::New()
+    $result = [System.Collections.Generic.List[PSObject]]::New()
 
     $Prefix += ($Prefix.EndsWith("/")) ? "" : "/"
     $s3Files = Get-S3Object -BucketName $BucketName -Prefix $Prefix -Delimiter '/'
@@ -28,23 +28,23 @@ function Get-S3Folder () {
     } elseif ($Folders) {
         foreach ($s3Folder in $s3Folders) {
             $result.Add(
-                [PCCustomObject]@{
-                    Key = $S3File.Key
+                [PSCustomObject]@{
+                    Key = $S3Folder
                 }
             )
         }
     } else {
         foreach ($s3File in $s3Files) {
             $result.add(
-                [PCCustomObject]@{
+                [PSCustomObject]@{
                     Key = $S3File.Key
                 }                
             )
         }
         foreach ($s3Folder in $s3Folders) {
             $result.Add(
-                [PCCustomObject]@{
-                    Key = $S3File.Key
+                [PSCustomObject]@{
+                    Key = $S3Folder
                 }
             )
         }

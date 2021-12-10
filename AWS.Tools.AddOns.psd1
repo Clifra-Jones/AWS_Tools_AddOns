@@ -24,16 +24,16 @@ GUID = '4c25b38e-62db-4312-bede-7712e3551424'
 Author = 'Cliff Williams'
 
 # Company or vendor of this module
-CompanyName = 'Unknown'
+CompanyName = 'Balfour Beatty US'
 
 # Copyright statement for this module
-Copyright = '(c) Cliff Williams. All rights reserved.'
+Copyright = '(c) Balfour Beatty US. All rights reserved.'
 
 # Description of the functionality provided by this module
 # Description = ''
 
 # Minimum version of the PowerShell engine required by this module
-# PowerShellVersion = ''
+PowerShellVersion = '7.0'
 
 # Name of the PowerShell host required by this module
 # PowerShellHostName = ''
@@ -51,7 +51,10 @@ Copyright = '(c) Cliff Williams. All rights reserved.'
 # ProcessorArchitecture = ''
 
 # Modules that must be imported into the global environment prior to importing this module
-# RequiredModules = @()
+RequiredModules = @(
+    'AWS.Tools.Common',
+    'AWS.Tools.S3'
+)
 
 # Assemblies that must be loaded prior to importing this module
 # RequiredAssemblies = @()
