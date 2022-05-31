@@ -9,7 +9,7 @@
 @{
 
 # Script module or binary module file associated with this manifest.
-RootModule = './AWS.Tools.AddOns.psm1'
+RootModule = './AWS_Tools_AddOns.psm1'
 
 # Version number of this module.
 ModuleVersion = '0.0.1'
