@@ -82,8 +82,8 @@ Function Get-S3RestoreProgress() {
     Param(
         [Parameter(Mandatory)]
         [String]$BucketName,
-        [Parameter(Mandatory)]
-        [string]$Prefix
+        [string]$Prefix,
+        [string]$Key
     )
     #valudate buckey name
     $Bucket = Get-S3Bucket -BucketName $BucketName
@@ -91,9 +91,13 @@ Function Get-S3RestoreProgress() {
         Write-Host"Bucket not found" -ForegroundColor Red
         exit
     }
-    $Prefix += ($Prefix.EndsWith("/")) ? "" : "/"
+    if ($Key) {
+        Get-S3ObjectMetadata -BucketName $BucketName -Key $key | Select-Object @{Name="Key";Expression={$Key}},RestoreInProgress, RestoreExpiration
+    } else {
+        $Prefix += ($Prefix.EndsWith("/")) ? "" : "/"
 
-    $s3Keys = Get-S3Object -BucketName $BucketName -Prefix $Prefix
+        $s3Keys = Get-S3Object -BucketName $BucketName -Prefix $Prefix
 
-    $S3Keys |Foreach-Object {$Key = $_.Key; $_ | Get-S3ObjectMetadata | Select-Object @{Name="Key";Expression={$Key}},RestoreInProgress, RestoreExpiration}
+        $S3Keys |Foreach-Object {$Key = $_.Key; $_ | Get-S3ObjectMetadata | Select-Object @{Name="Key";Expression={$Key}},RestoreInProgress, RestoreExpiration}
+    }
 }
