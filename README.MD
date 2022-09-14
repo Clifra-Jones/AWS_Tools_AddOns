@@ -10,7 +10,9 @@ CompanyName: Balfour Beatty US
 
 Copyright: (c) Balfour Beatty US. All rights reserved.
 
-## Helper function for working with AWS in Powershell.
+License: [Microsoft Public License](https://opensource.org/licenses/MS-PL)
+
+## Helper functions for working with AWS in Powershell.
 
 ## Get-S3Folder
 
