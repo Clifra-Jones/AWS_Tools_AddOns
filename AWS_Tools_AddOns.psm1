@@ -93,14 +93,17 @@ function Restore-S3Folder () {
 
     $s3Keys = Get-S3Object -BucketName $BucketName -Prefix $Prefix
     if ($s3Keys) {
-        $s3Keys | Restore-S3Object -CopyLifetimeInDays $CopyLifetime -Tier $Tier | Out-Null
+        foreach ($S3Key in $s3Keys) {
+            $msg = "Restoring object {0} to {1} for {2} days" -f $s3Key.Key, $Tier, $CopyLifetime
+            Write-Host $msg -ForegroundColor Yellow
+            $S3Key | Restore-S3Object -CopyLifetimeInDays $CopyLifetime -Tier $Tier -ErrorAction SilentlyContinue | Out-Null
+        }
     }
     <#
     .SYNOPSIS
     Restore an S3 folder, i.e. "common prefix", from Glacier.
     .DESCRIPTION
-    AWS Powershell Tools for S3 only has the ability to restore a single s3 object from glacier. This function allows you to restore
-    all object with a common prefix.
+    AWS Powershell Tools for S3 only has the ability to restore a single s3 object from glacier. This function allows you to restore all object with a common prefix.
     .PARAMETER BucketName
     The bucket name.
     .PARAMETER Prefix
@@ -136,6 +139,7 @@ Function Get-S3RestoreProgress() {
 
         $s3Keys = Get-S3Object -BucketName $BucketName -Prefix $Prefix
 
+        
         $S3Keys |Foreach-Object {$Key = $_.Key; $_ | Get-S3ObjectMetadata | Select-Object @{Name="Key";Expression={$Key}},RestoreInProgress, RestoreExpiration}
     }
     <#
@@ -147,5 +151,7 @@ Function Get-S3RestoreProgress() {
     The prefix to check the restore progress. Required if Key is omitted.
     .PARAMETER Key
     The full key of an object to check. Required if Prefix is omitted.
+    .OUTPUTS
+    An arrat of AWS S3 Metadata objects. Check the RestoreInProgress property. A value of false indicates the restore has completed.
     #>
 }
