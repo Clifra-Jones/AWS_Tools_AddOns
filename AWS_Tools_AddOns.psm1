@@ -54,7 +54,7 @@ function Get-S3Folder () {
     .SYNOPSIS
     List S3 Folders
     .DESCRIPTION
-    This function emulates working with folders "Common prefixes" in S3. It will list the files and top level keys for a given bucket and prefix.
+    This function emulates working with folders "Common prefixes" in S3. It will list the files and top level prefixes for a given bucket and prefix.
     .PARAMETER BucketName
     The name of the bucket
     .PARAMETER Prefix
@@ -103,7 +103,8 @@ function Restore-S3Folder () {
     .SYNOPSIS
     Restore an S3 folder, i.e. "common prefix", from Glacier.
     .DESCRIPTION
-    AWS Powershell Tools for S3 only has the ability to restore a single s3 object from glacier. This function allows you to restore all object with a common prefix.
+    AWS Powershell Tools for S3 only has the ability to restore a single s3 object from glacier. 
+    This function allows you to restore all object with a common prefix.
     .PARAMETER BucketName
     The bucket name.
     .PARAMETER Prefix
@@ -126,7 +127,7 @@ Function Get-S3RestoreProgress() {
         [Parameter(ParameterSetName='key')]
         [string]$Key
     )
-    #valudate buckey name
+    #validate bucket name
     $Bucket = Get-S3Bucket -BucketName $BucketName
     If (-not $Bucket) {
         Throw "Bucket not found"
