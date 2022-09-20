@@ -129,8 +129,7 @@ Function Get-S3RestoreProgress() {
     #valudate buckey name
     $Bucket = Get-S3Bucket -BucketName $BucketName
     If (-not $Bucket) {
-        Write-Host"Bucket not found" -ForegroundColor Red
-        exit
+        Throw "Bucket not found"
     }
     if ($Key) {
         Get-S3ObjectMetadata -BucketName $BucketName -Key $key | Select-Object @{Name="Key";Expression={$Key}},RestoreInProgress, RestoreExpiration
