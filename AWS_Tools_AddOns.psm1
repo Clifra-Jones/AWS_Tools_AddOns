@@ -1,9 +1,9 @@
 using namespace System.Collections.Generic
 using namespace System.Web
 
-#Requires -Modules @{ModuleName = 'AWS.Tools.Common'; ModuleVersion = '4.1.279'}
-#Requires -Modules @{ModuleName = 'Aws.Tools.S3'; ModuleVersion = '4.1.279'}
-#Requires -Modules @{ModuleName = 'AWS.Tools.EC2'; ModuleVersion = '4.1.279'}
+#Requires -Modules @{ModuleName = 'AWS.Tools.Common'; ModuleVersion = '4.1.126'}
+#Requires -Modules @{ModuleName = 'Aws.Tools.S3'; ModuleVersion = '4.1.126'}
+#Requires -Modules @{ModuleName = 'AWS.Tools.EC2'; ModuleVersion = '4.1.126'}
 function Get-S3Folder () {
     Param(
         [Parameter(Mandatory = $true )]
