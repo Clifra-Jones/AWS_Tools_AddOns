@@ -53,7 +53,8 @@ PowerShellVersion = '7.0'
 # Modules that must be imported into the global environment prior to importing this module
 RequiredModules = @(
     'AWS.Tools.Common',
-    'AWS.Tools.S3'
+    'AWS.Tools.S3',
+    'AWS.Tools.EC2'
 )
 
 # Assemblies that must be loaded prior to importing this module
@@ -72,7 +73,11 @@ RequiredModules = @(
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('Get-S3Folder','Restore-S3Folder','Get-S3RestoreProgress')
+FunctionsToExport = @(
+    'Get-S3Folder',
+    'Restore-S3Folder',
+    'Get-S3RestoreProgress'
+    'Get-EC2InstanceList')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = '*'

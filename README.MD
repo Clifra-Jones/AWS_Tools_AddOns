@@ -175,3 +175,22 @@ Restore-S3Folder [-BucketName] <String> [-Prefix] <String> [-CopyLifetime] <Int3
 ### Outputs
 
 * Response indicating success or failure.
+
+
+## Install this Module
+
+Installation requires git.
+
+First identify the module folder to install the module.
+
+```powershell
+$env:PSModulePath
+```
+
+You can install the module under you user profile or a folder accessible to all users.
+
+Change into the directory to install the module in the issue the following command.
+
+```powershell
+git clone https://github.com/Clifra-Jones/AWS_Tools_AddOns.git
+```
