@@ -308,10 +308,10 @@ function Get-DiskMappings() {
         return $deviceName
     }
       
-    [string[]]$array1 = @()
-    [string[]]$array2 = @()
-    [string[]]$array3 = @()
-    [string[]]$array4 = @()
+    # [string[]]$array1 = @()
+    # [string[]]$array2 = @()
+    # [string[]]$array3 = @()
+    # [string[]]$array4 = @()
     
     $Win32_Volumes = Get-CimInstance -ClassName Win32_Volume
 
@@ -338,8 +338,20 @@ function Get-DiskMappings() {
     # $array4 += ((Get-Volume -Path $array2[$i] | Get-Partition | Get-Disk).FriendlyName)
     # $i ++
     # }
+
+    $DiskInfo = @{}
+    foreach ($VolName in $VolNames) {
+        $i = $VolNames.IndexOf($VolName)
+        $Drive = [PSCustomObject]@{
+            DriveLetter = ($VolName.replace(':\\', ''))
+            VolumeId = $VolIDs[$i]
+            Serial = $Serials[$i]
+            FriendlyName = $FriendlyNames[$i]
+        }
+        $DiskInfo.Add($VolName.replace(':\',''), $Drive)
+    }
     
-      [array[]]$array = $VolNames, $VolIds, $Serials, $FriendlyNames
+      # [array[]]$array = $VolNames, $VolIds, $Serials, $FriendlyNames
       
       Try {
         $InstanceId = Get-EC2InstanceMetadata -Category "InstanceId"
@@ -386,29 +398,31 @@ function Get-DiskMappings() {
           $VirtualDevice = ($VirtualDeviceMap.GetEnumerator() | Where-Object { $_.Value -eq $BlockDeviceName }).Key | Select-Object -First 1
         }
         ElseIf ($DiskDrive.path -like "*PROD_AMAZON*") {
-          if ($DriveLetter -match '[^a-zA-Z0-9]') {
-            $i = 0
-            While ($i -ne ($array3.Count)) {
-              if ($array[2][$i] -eq $EbsVolumeID) {
-                $DriveLetter = $array[0][$i]
-                $DeviceName = $array[3][$i]
-              }
-              $i ++
-            }
+          if ($DriveLetter -match '^[a-zA-Z0-9]') {
+            $DeviceName = $DiskInfo[$DriveLetter].FriendlyName
+            # $i = 0
+            # While ($i -ne ($array3.Count)) {
+            #   if ($array[2][$i] -eq $EbsVolumeID) {
+            #     $DriveLetter = $array[0][$i]
+            #     $DeviceName = $array[3][$i]
+            #   }
+            #   $i ++
+            # }
           }
           $BlockDevice = ""
           $BlockDeviceName = ($BlockDeviceMappings | Where-Object { $_.ebs.VolumeId -eq $EbsVolumeID }).DeviceName
         }
         ElseIf ($DiskDrive.path -like "*NETAPP*") {
-          if ($DriveLetter -match '[^a-zA-Z0-9]') {
-            $i = 0
-            While ($i -ne ($array3.Count)) {
-              if ($array[2][$i] -eq $EbsVolumeID) {
-                $DriveLetter = $array[0][$i]
-                $DeviceName = $array[3][$i]
-              }
-              $i ++
-            }
+          if ($DriveLetter -match '^[a-zA-Z0-9]') {
+            $DeviceName = $DiskInfo[$DriveLetter].FriendlyName
+            # $i = 0
+            # While ($i -ne ($array3.Count)) {
+            #   if ($array[2][$i] -eq $EbsVolumeID) {
+            #     $DriveLetter = $array[0][$i]
+            #     $DeviceName = $array[3][$i]
+            #   }
+            #   $i ++
+            # }
           }
           $EbsVolumeID = "FSxN Volume"
           $BlockDevice = ""
