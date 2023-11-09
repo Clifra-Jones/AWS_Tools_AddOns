@@ -306,26 +306,40 @@ function Get-DiskMappings() {
         }
         $deviceName += [char](0x61 + $SCSITargetId % 26)
         return $deviceName
-      }
+    }
       
-      [string[]]$array1 = @()
-      [string[]]$array2 = @()
-      [string[]]$array3 = @()
-      [string[]]$array4 = @()
-      
-      Get-CimInstance -ClassName Win32_Volume | Select-Object Name, DeviceID | ForEach-Object {
-        $array1 += $_.Name
-        $array2 += $_.DeviceID
-      }
-      
-      $i = 0
-      While ($i -ne ($array2.Count)) {
-        $array3 += ((Get-Volume -Path $array2[$i] | Get-Partition | Get-Disk).SerialNumber) -replace "_[^ ]*$" -replace "vol", "vol-"
-        $array4 += ((Get-Volume -Path $array2[$i] | Get-Partition | Get-Disk).FriendlyName)
-        $i ++
-      }
-      
-      [array[]]$array = $array1, $array2, $array3, $array4
+    [string[]]$array1 = @()
+    [string[]]$array2 = @()
+    [string[]]$array3 = @()
+    [string[]]$array4 = @()
+    
+    $Win32_Volumes = Get-CimInstance -ClassName Win32_Volume
+
+    $VolNames = $Win32_Volumes.Name
+    $VolIDs = $Win32_Volumes.DeviceID
+
+    #   Get-CimInstance -ClassName Win32_Volume | Select-Object Name, DeviceID | ForEach-Object {
+    #     $array1 += $_.Name
+    #     $array2 += $_.DeviceID
+    #   }
+    
+    $Serials = [List[PsObject]]::New()
+    $FriendlyNames = [List[PsObject]]::New()
+
+    foreach ($VolID in $VolIDs) {
+        Write-Host "Getting disk information for volume $VolId" -ForegroundColor Green
+        $disk = Get-Volume -Path $VolID | Get-Partition | Get-Disk
+        $Serials.Add(($Disk.SerialNumber -replace "_[^ ]*$" -replace "vol", "vol-"))
+        $FriendlyNames.Add($Disk.FriendlyName)
+    }
+    # $i = 0
+    # While ($i -ne ($array2.Count)) {
+    # $array3 += ((Get-Volume -Path $array2[$i] | Get-Partition | Get-Disk).SerialNumber) -replace "_[^ ]*$" -replace "vol", "vol-"
+    # $array4 += ((Get-Volume -Path $array2[$i] | Get-Partition | Get-Disk).FriendlyName)
+    # $i ++
+    # }
+    
+      [array[]]$array = $VolNames, $VolIds, $Serials, $FriendlyNames
       
       Try {
         $InstanceId = Get-EC2InstanceMetadata -Category "InstanceId"
