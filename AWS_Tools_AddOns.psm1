@@ -363,7 +363,7 @@ function Get-DiskMappings() {
       }
       Try {
         $BlockDeviceMappings = (Get-EC2Instance -Region $Region -Instance $InstanceId).Instances.BlockDeviceMappings
-        $VirtualDeviceMap = (Get-EC2InstanceMetadata -Category "BlockDeviceMapping").GetEnumerator() | Where-Object { $_.Key -ne "ami" }
+        [array]$VirtualDeviceMap = (Get-EC2InstanceMetadata -Category "BlockDeviceMapping").GetEnumerator() | ForEach-Object {$_}
       }
       Catch {
         Write-Host "Could not access the AWS API, therefore, VolumeId is not available.
@@ -390,16 +390,18 @@ function Get-DiskMappings() {
           $BlockDeviceName = "/dev/" + $BlockDeviceName
           $BlockDevice = $BlockDeviceMappings | Where-Object { $BlockDeviceName -like "*" + $_.DeviceName + "*" }
           $EbsVolumeID = $BlockDevice.Ebs.VolumeId
-          $VirtualDevice = ($VirtualDeviceMap.GetEnumerator() | Where-Object { $_.Value -eq $BlockDeviceName }).Key | Select-Object -First 1
+          # $VirtualDevice = ($VirtualDeviceMap.GetEnumerator() | Where-Object { $_.Value -eq $BlockDeviceName }).Key | Select-Object -First 1
+          $VirtualDevice = $VirtualDeviceMap.Where({$_.Value -eq $BlockDeviceName}).Key | Select-Object -First 1
         }
         ElseIf ($DiskDrive.path -like "*PROD_AMAZON_EC2_NVME*") {
-          $BlockDeviceName = (Get-EC2InstanceMetadata -Category "BlockDeviceMapping").ephemeral((Get-CimInstance -ClassName Win32_Diskdrive | Where-Object { $_.DeviceID -eq ("\\.\PHYSICALDRIVE" + $DiskDrive.Number) }).SCSIPort - 2)
+          $BlockDeviceName = Convert-SCSITargetIdToDeviceName((Get-CIMInstance -ClassName Win32_Diskdrive | Where-Object { $_.DeviceID -eq ("\\.\PHYSICALDRIVE" + $DiskDrive.Number) }).SCSITargetId)
           $BlockDevice = $null
-          $VirtualDevice = ($VirtualDeviceMap.GetEnumerator() | Where-Object { $_.Value -eq $BlockDeviceName }).Key | Select-Object -First 1
+          #$VirtualDevice = ($VirtualDeviceMap.GetEnumerator() | Where-Object { $_.Value -eq $BlockDeviceName }).Key | Select-Object -First 1
+          $VirtualDevice = $VirtualDeviceMap.Where({$_.Value -eq $BlockDeviceName}).Key | Select-Object -First 1
         }
         ElseIf ($DiskDrive.path -like "*PROD_AMAZON*") {
           if ($DriveLetter -match '^[a-zA-Z0-9]') {
-            $DeviceName = $DiskInfo[$DriveLetter].FriendlyName
+            $DeviceName = $DiskInfo["$DriveLetter"].FriendlyName
             # $i = 0
             # While ($i -ne ($array3.Count)) {
             #   if ($array[2][$i] -eq $EbsVolumeID) {
@@ -409,12 +411,13 @@ function Get-DiskMappings() {
             #   $i ++
             # }
           }
-          $BlockDevice = ""
+          $BlockDevice = ""         
           $BlockDeviceName = ($BlockDeviceMappings | Where-Object { $_.ebs.VolumeId -eq $EbsVolumeID }).DeviceName
+          $VirtualDevice = $VirtualDeviceMap.Where({$_.Value -eq $BlockDeviceName}).Key | Select-Object -First 1
         }
         ElseIf ($DiskDrive.path -like "*NETAPP*") {
           if ($DriveLetter -match '^[a-zA-Z0-9]') {
-            $DeviceName = $DiskInfo[$DriveLetter].FriendlyName
+            $DeviceName = $DiskInfo["$DriveLetter"].FriendlyName
             # $i = 0
             # While ($i -ne ($array3.Count)) {
             #   if ($array[2][$i] -eq $EbsVolumeID) {
