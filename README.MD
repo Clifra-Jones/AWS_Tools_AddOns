@@ -103,10 +103,10 @@ This function returns a list of custom EC2 Instance objects with valuable inform
 
 ### IAM Helper Functions
 
-There are 2 functions for getting the permissions (inline and attached Policies) assigned to IAM Users, Groups, and Roles
+There are 3 functions for getting the permissions (inline and attached Policies) assigned to IAM Users, Groups, and Roles
 
-Get-IAMUserPermissions
-Get-IAMGroupPermissions
-Get-IAMRolePermissions
+* Get-IAMUserPermissions
+* Get-IAMGroupPermissions
+* Get-IAMRolePermissions
 
 See the [Module reference](docs/reference.html) for more details on these functions.
