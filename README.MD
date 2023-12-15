@@ -97,7 +97,7 @@ This will return an array of objects for each object with the common prefix (In 
 
 ### EC2 Helper Functions
 
-#### Get-EC2Instances
+#### Get-EC2InstanceList
 
 This function returns a list of custom EC2 Instance objects with valuable information about the instance. This information is gathered from many sources that the standard EC2 Instance object does not contain.
 
