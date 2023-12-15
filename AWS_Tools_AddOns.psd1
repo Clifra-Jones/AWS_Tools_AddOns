@@ -58,10 +58,10 @@ RequiredModules = @(
 )
 
 # Assemblies that must be loaded prior to importing this module
-# RequiredAssemblies = @()
+#RequiredAssemblies = @()
 
 # Script files (.ps1) that are run in the caller's environment prior to importing this module.
-# ScriptsToProcess = @()
+ScriptsToProcess = @("$PSScriptRoot/Private.ps1")
 
 # Type files (.ps1xml) to be loaded when importing this module
 # TypesToProcess = @()
@@ -77,6 +77,11 @@ FunctionsToExport = @(
     'Get-S3Folder',
     'Restore-S3Folder',
     'Get-S3RestoreProgress'
+    'Get-EC2InstanceList',
+    'Get-DiskMappings',
+    'Get-IAMUserPermissions',
+    'Get-IAMGroupPermissions',
+    'Get-IAMRolePermissions',
     'Get-EC2InstanceList',
     'Get-DiskMappings')
 

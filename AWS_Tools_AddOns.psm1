@@ -1,9 +1,4 @@
-using namespace System.Collections.Generic
-using namespace System.Web
 
-#Requires -Modules @{ModuleName = 'AWS.Tools.Common'; ModuleVersion = '4.1.126'}
-#Requires -Modules @{ModuleName = 'Aws.Tools.S3'; ModuleVersion = '4.1.126'}
-#Requires -Modules @{ModuleName = 'AWS.Tools.EC2'; ModuleVersion = '4.1.126'}
 function Get-S3Folder () {
     Param(
         [Parameter(Mandatory = $true )]
@@ -166,7 +161,101 @@ Function Get-S3RestoreProgress() {
     #>
 }
 
-function Get-IamUserPermissions() {
+function Get-IAMGroupPermissions() {
+    Param(
+        [Parameter(
+            Mandatory,
+            ValueFromPipelineByPropertyName
+        )]
+        [string]$GroupName
+    )
+
+    $IamGroup = (Get-IAMGroup -GroupName $GroupName).Group 
+
+
+    $Group = [PsCustomObject]@{
+        Arn = $IamGroup.Arn
+        GroupName = $IamGroup.GroupName
+        GroupId = $IamGroup.GroupId
+        CreateDate = $IamGroup.CreateDate
+        Policies = [List[PsObject]]::New()
+    }
+    
+    # Get any inline policies
+
+    $GroupInlinePolicies = Get-IAMGroupPolicyList -GroupName $GroupName
+    if ($GroupInlinePolicies) {            
+        foreach ($GroupInlinePolicy in $GroupInLinePolicies) {
+            $iamPolicy = Get-IAMGroupPolicy -PolicyName $GroupInlinePolicy -GroupName $GroupName
+            $PolicyDocument = [HttpUtility]::UrlDecode($IamPolicy.PolicyDocument)
+
+            $Policy = [PsCustomObject]@{
+                PolicyName = $IamPolicy.PolicyName
+                Arn = "N/A"
+                PolicyDocument = $PolicyDocument
+                PolicyType = 'Inline'
+            }
+            $Group.Policies.Add($Policy)
+        }
+    }
+
+    # Get any Group Attached Policies.
+    $GroupAttachedPolicies = Get-IAMAttachedGroupPolicyList -GroupName $GroupName
+    if ($GroupAttachedPolicies) {
+        foreach($GroupAttachedPolicy in $GroupAttachedPolicies) {
+            $IamPolicy = Get-IamPolicy -PolicyArn $GroupAttachedPolicy.PolicyArn
+            if ($IamPolicy.arn -like "*aws:policy*") {
+                $PolicyTYpe = 'AWS Managed'
+            } else {
+                $PolicyType = 'Customer Managed'
+            }
+            # Get the default version Id
+            $VersionId = (Get-IAMPolicyVersions -PolicyArn $IamPolicy.Arn | Where-Object {$_.IsDefaultVersion -eq $True}).VersionId
+            $PolicyDocument = [HttpUtility]::UrlDecode((Get-IAMPolicyVersion -PolicyArn $IamPolicy.Arn -VersionId $VersionId).Document)
+            $Policy = [PsCustomObject]@{
+                PolicyName = $IamPolicy.Name
+                Arn = $IamPolicy.Arn
+                PolicyDocument = $PolicyDocument.ToString()
+                PolicyType = $PolicyType
+            }
+            $Group.Policies.Add($Policy)
+        }
+    }
+
+    return $Group
+
+    <#
+    .SYNOPSIS
+    Returns the permissions assigned to this group.
+    .DESCRIPTION
+    Returns an object containing the permissions and policies assigned to a group.
+    .PARAMETER GroupName
+    The name of the group.
+    .OUTPUTS
+    An object with the following properties.
+    .NOTES
+    The Group Object contains the following properties.
+
+    Name            Type
+    --------------- -------------
+    Arn             String
+    GroupName       String
+    GroupId         String
+    CreateData      DateTime
+    Policies        Collection
+
+    The Policies property contains a collection of Policy objects with the following properties.
+
+    Name            Type
+    --------------- ----------------------
+    PolicyName      String
+    Arn             String (Applicable for managed policies only)
+    PolicyDocument  JSON
+    PolicyType      String (either 'inline', 'AWSManaged', or 'Customer Managed')
+    #>
+}
+
+function Get-IAMUserPermissions() {
     [CmdletBinding()]
     Param(
         [Parameter(
@@ -176,73 +265,202 @@ function Get-IamUserPermissions() {
         [string]$Username
     )
 
-    $GroupList = [List[psObject]]::New()
-    #$InlinePolicyList = [List[psObject]]:New()
-    #$PolicyList = [List[psObject]]::New()
-
     # Get the IAM User
     $IamUser = Get-IAMUser -UserName $Username
 
-    # Create a Hash Table for the User Permissions
-    $UserPermissions = @{
+    # Create a PSObject for the User Permissions
+    $UserPermissions = [psCustomObject]@{
         Arn = $IamUser.Arn
         CreateDate = $IamUser.CreateDate
         PasswordLastUsed = $IamUser.PasswordLastUsed
         UserId = $IamUser.UserId
         UserName = $IamUser.UserName
+        Policies = [List[PsObject]]::New()
+        Groups = [List[PsObject]]::New()
     }
 
     #Get any inline policies assigned to the user.
     $UserInlinePolicies = Get-IamUserPolicyList -UserName $IamUser.Username
-    $UserInlinePolicyList = [List[psObject]]::New()
     foreach ($UserInlinePolicy in $UserInlinePolicies) {
         $UserPolicy = Get-IAMUserPolicy -PolicyName $UserInlinePolicies.PolicyName -UserName $IamUser.UserName
         $PolicyDocument = [HttpUtility]::UrlDecode($UserPolicy.PolicyDocument)
-        $UserInlinePolicyList.Add(
-            [PSCustomObject]@{
-                PolicyName = UserPolict.PolicyName
+        $Policy = [PsCustomObject]@{
+                PolicyName = $IamPolicy.Name
+                Arn = "N/A"
                 PolicyDocument = $PolicyDocument
+                PolicyType = 'Inline'
             }
-        )        
+        $UserPermissions.InlinePolicies.Add($Policy)
     }
-    $UserPermission.Add("InLinePolicies", $UserInlinePolicyList.ToArray())
-    
 
-    # Retrieve the Users Group Membership
-    $Groups = Get-IAMGroupForUser -UserName $IamUser.Username
-    foreach ($Group in $Groups) {   
-        $GroupPermission = @{
-            GroupName = $Group.GroupName
-            GroupId = $Group.GroupId
-        } 
-
-        # Get any inline policies
-        $GroupInlinePolicyList = [List[psObject]]::New()
-        $GroupInlinePolicies = Get-IAMGroupPolicyList -GroupName $Group.Name
-        if ($GroupInlinePolicies) {
-            $GroupInlinePolicyList = [List[psObject]]::New()
-            foreach ($GroupInlinePolicy in $GroupInLinePolicies) {
-                $InlinePolicyDocument = [HttpUtility]::UrlDecode((Get-IAMGroupPolicy -GroupName $Group.Name -PolicyName $GroupInlinePolicy.PolicyName).PolicyDocument)
-                $InlinePolicyList.Add(
-                    [PSCustomObject]@{
-                        PolicyName = $GroupInlinePolicy.PolicyName
-                        PolicyDocument = $InlinePolicyDocument
-                    }
-                )
-            }
-            $GroupPermission.Add("InlinePermission",$InlinePolicyList.ToArray())
+    # Get an attached pPolicies for this user.
+    $UserAttachedPolicies = Get-IAMAttachedUserPolicies -UserName $Username
+    foreach ($UserAttachedPolicy in $UserAttachedPolicies) {
+        $IamPolicy = Get-IAMPolicy -PolicyArn $UserAttachedPolicy.PolicyArn
+        if ($IamPolicy.Arn -like "*aws:policy") {
+            $PolicyType | Add-Member -MemberType NoteProperty -Name "PolicyType" -Value "AWS Managed"
+        } else {
+            $PolicyType | Add-Member -MemberType NoteProperty -Name "MemberType" -Value "Customer Managed"
         }
-
-        # Get any Managed Policies.
+        $PolicyDocument = [HttpUtility]::UrlDecode($IamPolicy.PolicyDocument)
+        $Policy = [PsCustomObject]@{
+                PolicyName = $IamPolicy.Name
+                Arn = $IamPolicy.Arn
+                PolicyDocument = $PolicyDocument.ToString()
+                PolicyType = $PolicyType
+            }
+        UserPermissions.Policies.Add($Policy)
+    }
+    
+    # Group
+    $UserGroups = Get-IAMGroupForUser -UserName $IamUser.Username
+    foreach ($UserGroup in $UserGroups) {   
+        $Group = Get-IAMGroupPermissions -GroupName $UserGroup.GroupName
+        $UserPermissions.Groups.Add($Group)
     }
 
+    return $UserPermissions
+
+    <#
+    .SYNOPSIS
+    Returns permissions assigned to a user.
+    .DESCRIPTION
+    Returns an object containing user information and the permissions and policies assigned to a user. 
+    Also contains a collection of group objects the User is a member of (See Get-IAMGroupPermissions).
+    .PARAMETER Username
+    The Name of the user.
+    .OUTPUTS
+    An object containing user information and policies assigned to the user.
+    .NOTES
+    The User Object contains the following properties.
+
+    Name                Type
+    ------------------- ----------------------
+    Arn                 String
+    Username            String
+    UserId              String
+    CreateDate          DateTime
+    PasswordLastUsed    DateTime
+    Policies            Collection of Policies assigned to the group.
+    Groups              Groups the user is a member of (Group Objects, see Get-IAMGroupPermissions)
+
+    The Policy objects in the Policies collection have the following properties.
+
+    Name                Type
+    ------------------- ---------------------
+    PolicyName          String
+    Arn                 String (Applicable for managed policies only)
+    PolicyDocument      JSON
+    PolicyType          String (either 'inline', 'AWSManaged', or 'Customer Managed')
+    #>
+}
+
+function Get-IAMRolePermissions() {
+    Param(
+        [Parameter(
+            Mandatory,
+            ValueFromPipelineByPropertyName
+        )]
+        [string]$RoleName
+    )
+
+    $IamRole = Get-IAMRole -RoleName $RoleName
+
+    $AssumeRolePolicyDocument = [HttpUtility]::UrlDecode($IamRole.AssumeRolePolicyDocument)
+
+
+    $Role = [PSCustomObject]@{
+        Arn = $IamRole.Arn
+        RoleName = $IamRole.RoleName
+        RoleId = $IamRole.RoleId
+        RoleLastUsed = $IamRole.RoleLastUsed
+        CreateDate = $IamRole.CreateDate
+        MaxSessionDuration = $IamRole.MaxSessionDuration
+        AssumeRolePolicyDocument = $AssumeRolePolicyDocument
+        Policies = [List[PsObject]]::New()
+    }
+
+    # Get inline policies
+
+    $RoleInlinePolicies = Get-IAMRolePolicies -RoleName $RoleName
+    If ($RoleInlinePolicies) {
+        foreach ($RoleInlinePolicy in $RoleInlinePolicies) {
+            $IamPolicy = Get-IAMRolePolicy -PolicyName $RoleInlinePolicy -RoleName $RoleName
+            $PolicyDocument = [HttpUtility]::UrlDecode($IamPolicy.PolicyDocument)
+
+            $Policy = [PSCustomObject]@{
+                PolicyName = $IamPolicy.PolicyName
+                Arn = "N/A"
+                PolicyDocument = $PolicyDocument
+                PolicyType = 'InLine'
+            }
+            $Role.Policies.Add($Policy)
+        }
+    }
+    
+    # Get any attached Policies
+    $RoleAttachedPolicies = Get-IAMAttachedRolePolicies -RoleName $RoleName
+    if ($RoleAttachedPolicies) {
+        foreach ($RoleAttachedPolicy in $RoleAttachedPolicies) {
+            $IamPolicy = Get-IamPolicy -PolicyArn $RoleAttachedPolicy.PolicyArn
+            if ($IamPolicy.arn -like "*aws:policy") {
+                $PolicyType = 'AWS Managed'
+            } else {
+                $PolicyType = 'Customer Managed'
+            }
+            $VersionId = (Get-IAMPolicyVersions -PolicyArn $IamPolicy.PolicyArn | Where-Object {$_.IsDefault -eq $True}).VersionId
+            $PolicyDocument = [HttpUtility]::UrlDecode((Get-IAMPolicyVersion -PolicyArn $IamPolicy.Arn -VersionId $VersionId).Document)
+            $Policy = [PSCustomObject]@{
+                PolicyName = $IamPolicy.Name
+                Arn = $IamPolicy.Arn
+                PolicyDocument = $PolicyDocument
+                $PolicyType = $PolicyType
+            }
+            $Role.Policies.Add($Policy)
+        }
+    }
+
+    return $Role
+
+    <#
+    .SYNOPSIS
+    Returns the permissions assigned to a role.
+    .DESCRIPTION
+    Returns an object containing the permissions and policies assigned to a role.
+    .PARAMETER RoleName
+    The name of the role.
+    .OUTPUTS
+    An object with the following properties.
+    .NOTES
+    The Role object has the following properties.
+
+    Name                        Type
+    --------------------------- ----------------
+    Arn                         String
+    RoleName                    String
+    RoleId                      String
+    CreateDate                  DateTime
+    MaxSessionDuration          Integer
+    AssumeRolePolicyDocument    JSON
+    Policies                    Collection og Policies assigned to the role.
+
+    The Policy objects in the Policies collection have the following properties.
+
+    Name                Type
+    ------------------- -------------------
+    PolicyName          String
+    Arn                 String (Applicable for managed policies only)
+    PolicyDocument      JSON
+    PolicyType          String (either 'inline', 'AWSManaged', or 'Customer Managed')
+    #>
 }
 
 function Get-EC2InstanceList() {
     [CmdletBinding()]
     Param(
         [string]$ProfileName,
-        [switch]$IncludeAccountId
+        [switch]$IncludeAccountId,
+        [switch]$NoProgress
     )
 
     If ($ProfileName) {
@@ -256,9 +474,12 @@ function Get-EC2InstanceList() {
     $EC2InstanceList = [List[psObject]]::New()
 
     $EC2Instances = (Get-EC2instance).Instances
-    foreach ($EC2Instance in $EC2INstances) {
+    foreach ($EC2Instance in $EC2INstances) {        
         $Tags = $EC2Instance.Tags
         $Name = $Tags[$Tags.Key.IndexOf("Name")].Value
+        if (-not $NoProgress) {
+            Write-Progress -Activity "Getting EC2 INstances" -Status $Name -PercentComplete (($EC2Instances.IndexOf($EC2Instance) / $EC2Instances.Count) * 100)
+        }
         $State = $EC2Instance.State.Name
         $AvailabilityZone = (Get-EC2InstanceStatus -InstanceId $EC2Instance.InstanceId -IncludeAllInstance $true).AvailabilityZone
         $SecurityGroup = $EC2INstance.SecurityGroups.GroupName -join ","
@@ -279,6 +500,8 @@ function Get-EC2InstanceList() {
             KeyName = $EC2Instance.KeyName
             PrivateIpAddress = $EC2Instance.PrivateIpAddress
             PrivateDnsName = $EC2Instance.PrivateDnsName
+            PublicIPAddress = $EC2Instance.PublicIpAddress
+            PublicDNSName = $EC2Instance.PublicDnsName
             SubnetId = $EC2Instance.SubnetId
             Subnet = $SubnetName
             LaunchTime = $EC2Instance.LaunchTime
@@ -292,6 +515,37 @@ function Get-EC2InstanceList() {
         $EC2InstanceList.Add($Instance)
     }
     return $EC2InstanceList.ToArray()
+    <#
+    .SYNOPSIS
+    Returns a list of EC2 Instances
+    .DESCRIPTION 
+    REturns a list of EC2 INstances with relevant properties.
+    .PARAMETER ProfileName
+    The saved EC2 profile to used to retrieve the data.
+    .PARAMETER IncludeAccountId
+    Include the account ID the EC2 INstance is in.
+    .OUTPUTS
+    A collection of custom EC2 Instances.
+    .NOTES
+    Each EC2 instance object has the following properties.
+
+    Name                Type        Description
+    ------------------- ---------   -------------------------
+    Name                String      Name of the Instance.
+    InstanceId          String      Instance identifier.
+    InstanceState       String      The state of the instance (Stopped or Running).
+    InstanceType        String      The Instance type.
+    AvailabilityZone    String      The availability zone the instance is in.
+    SecurityGroup       String      The Security Groups assigned to the Instance.
+    KeyName             String      The KMS Key assigned to the Instance.
+    PrivateIpAddress    String      The Private IP address assigned to the Instance.
+    PrivateDNSName      String      The Private DNS Name assigned to the instance.
+    PublicIPAddress     String      The Public IP address assigned tot he instance.
+    PublicDNSName       String      The Public DNS name assigned to the instance.
+    SubnetId            String      The Subnet Assigned to the instance.
+    Subnet              String      The Subnet Name.
+    Platform            String      The Instance Platform i.e Windows Linux
+    #>
 }
 
 function Get-DiskMappings() {
@@ -351,26 +605,26 @@ function Get-DiskMappings() {
         $DiskInfo.Add($VolName.replace(':\',''), $Drive)
     }
     
-      # [array[]]$array = $VolNames, $VolIds, $Serials, $FriendlyNames
-      
-      Try {
+    # [array[]]$array = $VolNames, $VolIds, $Serials, $FriendlyNames
+    
+    Try {
         $InstanceId = Get-EC2InstanceMetadata -Category "InstanceId"
         $Region = Get-EC2InstanceMetadata -Category "Region" | Select-Object -ExpandProperty SystemName
-      }
-      Catch {
+    }
+    Catch {
         Write-Host "Could not access the instance Metadata using AWS Get-EC2InstanceMetadata CMDLet.
-      Verify you have AWSPowershell SDK version '3.1.73.0' or greater installed and Metadata is enabled for this instance." -ForegroundColor Yellow
-      }
-      Try {
+        Verify you have AWSPowershell SDK version '3.1.73.0' or greater installed and Metadata is enabled for this instance." -ForegroundColor Yellow
+    }
+    Try {
         $BlockDeviceMappings = (Get-EC2Instance -Region $Region -Instance $InstanceId).Instances.BlockDeviceMappings
         [array]$VirtualDeviceMap = (Get-EC2InstanceMetadata -Category "BlockDeviceMapping").GetEnumerator() | ForEach-Object {$_}
-      }
-      Catch {
+    }
+    Catch {
         Write-Host "Could not access the AWS API, therefore, VolumeId is not available.
-      Verify that you provided your access keys or assigned an IAM role with adequate permissions." -ForegroundColor Yellow
-      }
-      
-      Get-disk | ForEach-Object {
+        Verify that you provided your access keys or assigned an IAM role with adequate permissions." -ForegroundColor Yellow
+    }
+    
+    Get-disk | ForEach-Object {
         $DriveLetter = $null
         $VolumeName = $null
         $VirtualDevice = $null
@@ -438,12 +692,22 @@ function Get-DiskMappings() {
         New-Object PSObject -Property @{
           Disk          = $Disk;
           Partitions    = $Partitions;
-          DriveLetter   = If ($DriveLetter -eq $null) { "N/A" } Else { $DriveLetter };
-          EbsVolumeId   = If ($EbsVolumeID -eq $null) { "N/A" } Else { $EbsVolumeID };
-          Device        = If ($BlockDeviceName -eq $null) { "N/A" } Else { $BlockDeviceName };
-          VirtualDevice = If ($VirtualDevice -eq $null) { "N/A" } Else { $VirtualDevice };
-          VolumeName    = If ($VolumeName -eq $null) { "N/A" } Else { $VolumeName };
-          DeviceName    = If ($DeviceName -eq $null) { "N/A" } Else { $DeviceName };
+          DriveLetter   = If ($null -eq $DriveLetter) { "N/A" } Else { $DriveLetter };
+          EbsVolumeId   = If ($null -eq $EbsVolumeID) { "N/A" } Else { $EbsVolumeID };
+          Device        = If ($null -eq $BlockDeviceName) { "N/A" } Else { $BlockDeviceName };
+          VirtualDevice = If ($null -eq $VirtualDevice) { "N/A" } Else { $VirtualDevice };
+          VolumeName    = If ($null -eq $VolumeName) { "N/A" } Else { $VolumeName };
+          DeviceName    = If ($null -eq $DeviceName) { "N/A" } Else { $DeviceName };
         }
-      } | Sort-Object Disk | Format-Table -AutoSize -Property Disk, Partitions, DriveLetter, EbsVolumeId, Device, VirtualDevice, DeviceName, VolumeName      
+    } | Sort-Object Disk | Select-Object Disk, Partitions, DriveLetter, EbsVolumeId, Device, VirtualDevice, DeviceName, VolumeName 
+
+    <#
+    .SYNOPSIS 
+    LIst disk mappings on an EC2 Instance.
+    .DESCRIPTION
+    List the disk mappings on an EC2 instance to reference the volume ID with the Windows volume and drive letter.
+    This function must be run on an EC2 Windows instance.
+    .OUTPUTS
+    An array of disk objects.
+    #>
 }
