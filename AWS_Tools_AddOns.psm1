@@ -772,7 +772,7 @@ function Set-SecureAWSCredentials() {
         [string]$AccessKeyId,
         [Parameter(Mandatory)]
         [string]$SecretAccessKey,
-        [string]$AccessToken,
+        [string]$SessionToken,
         [Parameter(Mandatory)]
         [String]$Region,
         [datetime]$Expiration,
@@ -788,10 +788,12 @@ function Set-SecureAWSCredentials() {
     Version=1;
     AccessKeyId= $AccessKeyId;
     SecretAccessKey=$SecretAccessKey;
-    SessionToken= $null; #"the AWS session token for temporary credentials";
-    #Expiration="ISO8601 timestamp when the credentials expire";
     } 
 
+    if ($SessionToken) {
+        $SecretIn.Add("SessionToken", $SessionToken)
+    }
+    
     if ($Expiration) {
         $ExpDate = $Expiration.ToString("yyyy-MM-dd HH:mm:ss")
         $SecretIn.Add("Expiration", $ExpDate)
