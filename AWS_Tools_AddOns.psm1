@@ -772,6 +772,7 @@ function Set-SecureAWSCredentials() {
         [string]$AccessKeyId,
         [Parameter(Mandatory)]
         [string]$SecretAccessKey,
+        [string]$AccessToken,
         [Parameter(Mandatory)]
         [String]$Region,
         [datetime]$Expiration,
@@ -811,21 +812,24 @@ function Set-SecureAWSCredentials() {
     Set-Secret @Params
 
     $CredFile ="{0}/.aws/credentials" -f $home
-    $configFile = "{0}/.aws/config" -f $home
 
-    Add-Content -Path $CredFile -Value "[$ProfileName]"
+    # Add-Content -Path $CredFile -Value "[$ProfileName]"
     if ($IsWindows) {
-        Add-Content -Path $CredFile -Value "credential_process = credential_process.cmd $ProfileName"
+        $content = @"
+[$ProfileName]
+credential_process = credential_process.cmd = $ProfileName
+region = $Region
+"@
+        Add-Content -Path $CredFile -Value $content
     } else {
-        Add-Content -Path $CredFile -Value "credential_process = credential_process.sh $ProfileName"
+        $content = @"
+[$ProfileName]
+credential_process = credential_process.sh = $ProfileName
+region = $Region
+"@
+        Add-Content -Path $CredFile -Value $content
     }
 
-    Add-Content -Path $configFile -Value "[profile = $ProfileName]"
-
-    if (-not (Get-Content $configFile | Select-String $ProfileName)) {
-        Add-Content -Path $configFile -Value "region = $region"
-    }
-    
     <#
     .SYNOPSIS
     Creates a secure entry in the aws credentials file.
