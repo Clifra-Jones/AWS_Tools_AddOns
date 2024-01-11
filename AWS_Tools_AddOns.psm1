@@ -549,8 +549,12 @@ function Get-EC2InstanceList() {
 }
 
 function Get-DiskMappings() {
+    
     function Convert-SCSITargetIdToDeviceName {
-        param([int]$SCSITargetId)
+        param(
+            [int]$SCSITargetId
+        )
+
         If ($SCSITargetId -eq 0) {
           return "sda1"
         }
@@ -709,5 +713,140 @@ function Get-DiskMappings() {
     This function must be run on an EC2 Windows instance.
     .OUTPUTS
     An array of disk objects.
+    #>
+}
+
+function Set-SecretVault() {
+    [CmdletBinding()]
+    Param (
+        [Parameter(Mandatory)]
+        [string]$VaultName,
+        [ValidateSet('Password','None')]
+        [string]$Authentication,
+        [ValidateSet('Prompt','None')]
+        [string]$Interaction
+    )
+
+    $Config = Get-SecretStoreConfiguration | Where-Object {$_.Scope -eq "CurrentUser"}
+
+    $Params = @{}
+
+    If ($Authentication) {
+        if ($Authentication -ne $Config.Authentication) {
+            $Params.Add("Authentication", $Authentication)
+        }
+    }
+
+    if ($Interaction) {
+        if ($Interaction -ne $Config.Interaction) {
+            $Params.Add("Interaction", $Interaction)
+        }
+    }
+
+    If ($Params.Count -gt 0) {
+        Set-SecretStoreConfiguration -Scope CurrentUser @Params
+    }
+
+    Register-SecretVault -Name $VaultName -ModuleName Microsoft.PowerShell.SecretStore -DefaultVault -AllowClobber
+
+    Write-Host "Vault $VaultName Created"
+    <#
+    .DESCRIPTION
+    Creates a Secrets vault and sets the option configuration parameters.
+    Note: If you plan to use this vault for automation purposes you must set Authentication and Interaction to 'None'.
+    .PARAMETER VaultName
+    The Name of the vault.
+    .PARAMETER Authentication
+    The type of Authentication, Either 'Password' or 'None'
+    .PARAMETER Interaction
+    Allow or suppress user interaction. Either 'Prompt' or 'None'. If set to none and the vault requires a password an error will occur.    
+    #>
+}
+
+function Set-SecureAWSCredentials() {
+    [CmdletBinding()]
+    Param (
+        [Parameter(Mandatory)]
+        [String]$ProfileName,
+        [Parameter(Mandatory)]
+        [string]$AccessKeyId,
+        [Parameter(Mandatory)]
+        [string]$SecretAccessKey,
+        [Parameter(Mandatory)]
+        [String]$Region,
+        [datetime]$Expiration,
+        [string]$VaultName
+    )
+
+    $ProfileName = Read-Host -Prompt "Enter Profile Name: " 
+    $AccessKeyId = Read-Host -Prompt "Enter AWS access key: "
+    $SecretAccessKey = Read-Host -Prompt "Enter AWS secret access key: "
+    $region = Read-Host -Prompt "Enter AWS Region: "
+
+    $Cred = Get-AWSCredential -ProfileName $ProfileName
+    if ($Cred) {
+        Remove-AWSCredentialProfile -ProfileName $ProfileName -Force
+    }
+
+    $secretIn = @{
+    Version=1;
+    AccessKeyId= $AccessKeyId;
+    SecretAccessKey=$SecretAccessKey;
+    SessionToken= $null; #"the AWS session token for temporary credentials";
+    #Expiration="ISO8601 timestamp when the credentials expire";
+    } 
+
+    if ($Expiration) {
+        $ExpDate = $Expiration.ToString("yyyy-MM-dd HH:mm:ss")
+        $SecretIn.Add("Expiration", $ExpDate)
+    }
+
+    $secret = ConvertTo-Json -InputObject $secretIn
+    
+    if ($VaultName) {
+        $Vault = @{
+            Vault = $VaultName
+        }
+    }
+
+    Set-Secret -Name $ProfileName -Secret $secret @Vault
+
+    $CredFile ="{0}/.aws/credentials" -f $home
+    $configFile = "{0}/.aws/config" -f $home
+
+    Add-Content -Path $CredFile -Value "[$ProfileName]"
+    if ($IsWindows) {
+        Add-Content -Path $CredFile -Value "credential_process = credential_process.cmd $ProfileName"
+    } else {
+        Add-Content -Path $CredFile -Value "credential_process = credential_process.sh $ProfileName"
+    }
+
+    Add-Content -Path $configFile -Value "[profile = $ProfileName]"
+    Add-Content -Path $configFile -Value "region = $region"
+
+    <#
+    .SYNOPSIS
+    Creates a secure entry in the aws credentials file.
+    .DESCRIPTION
+    Creates a secure entry in the AWS Credentials file. The AWS Keys are stored in a Secret vault created by Set-SecretVault.
+    This credential entry uses a credential process. This process calls a script based on the Operation system.
+    For Windows: credential_process.cmd
+    For Linux/Mac: credential_process.sh
+    Copy the appropriate file into a directory that is in the path.
+    For Linux the best place is ~/.local/bin
+    For Windows any directory that is a in the path. For optimal security create a folder under the user profile and add that path to the User section of the Path Environment variable configuration.
+    .PARAMETER ProfileName
+    The name of the profile. To set a default profile you must name the profile default.
+    .PARAMETER AccessKeyId
+    The AWS Access Key ID.
+    .PARAMETER SecretAccessKey
+    The AWS Secret Access key.
+    .PARAMETER Region
+    The default AWS Region for this profile.
+    .PARAMETER Expiration
+    An option expiration date, the stored secret will expire after this date/time.
+    .PARAMETER VaultName
+    An optional vault name. If omitted, the secret will be created in the default vault. 
+
     #>
 }
