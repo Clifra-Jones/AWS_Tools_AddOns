@@ -817,18 +817,18 @@ function Set-SecureAWSCredentials() {
 
     # Add-Content -Path $CredFile -Value "[$ProfileName]"
     if ($IsWindows) {
-        $content = @'
+        $content = @"
 [$ProfileName]
 credential_process = credential_process.cmd "$ProfileName"
 region = $Region
-'@
+"@
         Add-Content -Path $CredFile -Value $content
     } else {
-        $content = @'
+        $content = @"
 [$ProfileName]
-credential_process = credential_process.sh $ProfileName
+credential_process = credential_process.sh "$ProfileName"
 region = $Region
-'@
+"@
         Add-Content -Path $CredFile -Value $content
     }
 
