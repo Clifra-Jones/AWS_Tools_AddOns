@@ -796,15 +796,19 @@ function Set-SecureAWSCredentials() {
         $SecretIn.Add("Expiration", $ExpDate)
     }
 
-    $secret = ConvertTo-Json -InputObject $secretIn
+    $secret = $secretIn | ConvertTo-Json
+
+    $Params = @{
+        Name = $ProfileName
+        Secret = $secret
+    }
     
     if ($VaultName) {
-        $Vault = @{
-            Vault = $VaultName
-        }
+        $Params.Add("Vault", $VaultName)
     }
+    
 
-    Set-Secret -Name $ProfileName -Secret $secret @Vault
+    Set-Secret @Params
 
     $CredFile ="{0}/.aws/credentials" -f $home
     $configFile = "{0}/.aws/config" -f $home
