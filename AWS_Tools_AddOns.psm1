@@ -821,8 +821,11 @@ function Set-SecureAWSCredentials() {
     }
 
     Add-Content -Path $configFile -Value "[profile = $ProfileName]"
-    Add-Content -Path $configFile -Value "region = $region"
 
+    if (-not (Get-Content $configFile | Select-String $ProfileName)) {
+        Add-Content -Path $configFile -Value "region = $region"
+    }
+    
     <#
     .SYNOPSIS
     Creates a secure entry in the aws credentials file.
