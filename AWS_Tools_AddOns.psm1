@@ -778,11 +778,6 @@ function Set-SecureAWSCredentials() {
         [string]$VaultName
     )
 
-    $ProfileName = Read-Host -Prompt "Enter Profile Name: " 
-    $AccessKeyId = Read-Host -Prompt "Enter AWS access key: "
-    $SecretAccessKey = Read-Host -Prompt "Enter AWS secret access key: "
-    $region = Read-Host -Prompt "Enter AWS Region: "
-
     $Cred = Get-AWSCredential -ProfileName $ProfileName
     if ($Cred) {
         Remove-AWSCredentialProfile -ProfileName $ProfileName -Force
