@@ -143,10 +143,18 @@ Function Get-S3RestoreProgress() {
         
         $S3Keys |Foreach-Object {
             # Remove any by-directional unicode characters the stupid users may have entered into the file path & name
-            $Key = $_.Key -replace '\P{IsBasicLatin}'
+            $_.Key = $_.Key -cReplace '\P{IsBasicLatin}'
+            $MetaData = $_ | Get-S3ObjectMetadata             
+            $Progress = [PSCustomObject]@{
+                Key = $_.Key
+                RestoreInProgress = $MetaData.RestoreInProgress
+                RestoreExpiration = $MetaData.RestoreExpiration
+            }
+            Write-Output $Progress
+        } 
 
-            $Key | Get-S3ObjectMetadata | Select-Object @{Name="Key";Expression={$Key}},RestoreInProgress, RestoreExpiration}
     }
+    
     <#
     .SYNOPSIS
     Display the progress of a Glacier Restore.
@@ -760,6 +768,11 @@ function Set-SecretVault() {
     The type of Authentication, Either 'Password' or 'None'
     .PARAMETER Interaction
     Allow or suppress user interaction. Either 'Prompt' or 'None'. If set to none and the vault requires a password an error will occur.    
+    .NOTES
+    The powershell module SecretStore which this module uses does not support vaults outside the user scope. Therefor creating multiple vaults is redundant. 
+    SecretStore will just save secrets in all vaults. This is by design from Microsoft. It may change in the future.
+    If you are using this vault for secure AWS Access keys you CANNOT set authentication to password. The credential_process functionality of the
+    AWS credential process will hang waiting on the prompt and will not accept input from the console. You must set authentication and Interaction to 'none'.
     #>
 }
 
@@ -768,7 +781,6 @@ function Set-SecureAWSCredentials() {
     Param (
         [Parameter(Mandatory)]
         [String]$ProfileName,
-        [Parameter(Mandatory)]
         [string]$AccessKeyId,
         [Parameter(Mandatory)]
         [string]$SecretAccessKey,
@@ -837,20 +849,22 @@ region = $Region
     Creates a secure entry in the aws credentials file.
     .DESCRIPTION
     Creates a secure entry in the AWS Credentials file. The AWS Keys are stored in a Secret vault created by Set-SecretVault.
-    This credential entry uses a credential process. This process calls a script based on the Operation system.
+    This credential entry uses a credential process. This process calls a script based on the Operating System.
     For Windows: credential_process.cmd
     For Linux/Mac: credential_process.sh
     Copy the appropriate file into a directory that is in the path.
     For Linux the best place is ~/.local/bin
-    For Windows any directory that is a in the path. For optimal security create a folder under the user profile and add that path to the User section of the Path Environment variable configuration.
+    For Windows any directory that is in the path. For optimal security create a folder under the user profile and add that path to the User section of the Path Environment variable configuration.
     .PARAMETER ProfileName
     The name of the profile. To set a default profile you must name the profile default.
     .PARAMETER AccessKeyId
     The AWS Access Key ID.
     .PARAMETER SecretAccessKey
     The AWS Secret Access key.
+    .PARAMETER SessionToken
+    A Session Token for this credential.
     .PARAMETER Region
-    The default AWS Region for this profile.
+    The AWS Region for this profile.
     .PARAMETER Expiration
     An option expiration date, the stored secret will expire after this date/time.
     .PARAMETER VaultName
@@ -858,3 +872,4 @@ region = $Region
 
     #>
 }
+

@@ -16,6 +16,12 @@ License: [Microsoft Public License](https://opensource.org/licenses/MS-PL)
 
 These functions were created for working with AWS in PowerShell.
 
+1/11/2024: Added 2 additional function to store AWS Access Keys in a Secure Vault.
+Set-SecretVault
+Set-Secure-AwsCredentials
+
+See the module reference for details.
+
 ### Aws S3 Helper Functions
 
 AWS S3 does not have the concept of folders. While browsing S3 buckets in the AWS console it appears the show folder you can drill down into, these are not actually folders in the Windows Explorer sense. They are just a common prefix that an object has.
@@ -108,5 +114,16 @@ There are 3 functions for getting the permissions (inline and attached Policies)
 * Get-IAMUserPermissions
 * Get-IAMGroupPermissions
 * Get-IAMRolePermissions
+
+### Secure Access Key Storage Functions
+
+There are 2 functions that facilitate creating secured AWS Access keys.
+
+* Set-SecretVault
+* Set-SecureAWSCredentials
+  
+Please note that you cannot set the vault to require a password if you are using this vault for secure access keys.
+This will cause the process to hang when trying to retrieve the keys.
+You must set Authentication and Interaction to 'none'.
 
 See the [Module reference](docs/reference.html) for more details on these functions.
