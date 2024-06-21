@@ -503,6 +503,7 @@ function Get-EC2InstanceList() {
             InstanceId = $EC2Instance.InstanceId
             InstanceState = $State
             InstanceType = $EC2Instance.InstanceType
+            ImageId = $EC2Instance.ImageId
             AvailabilityZone = $AvailabilityZone
             SecurityGroup = $SecurityGroup
             KeyName = $EC2Instance.KeyName
@@ -514,6 +515,7 @@ function Get-EC2InstanceList() {
             Subnet = $SubnetName
             LaunchTime = $EC2Instance.LaunchTime
             Platform = $EC2Instance.PlatformDetails
+            Instance = $EC2Instance
         }
 
         If ($IncludeAccountId) {
