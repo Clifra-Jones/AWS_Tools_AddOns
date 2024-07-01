@@ -7,6 +7,7 @@ Properties {
         '.gitignore'
         'publish',
         '.vscode'
+        '_config.yml'
     )
     $TempDir = "$home/tmp" 
     $PublishDir = "$PSScriptRoot/publish/$ModuleName"
