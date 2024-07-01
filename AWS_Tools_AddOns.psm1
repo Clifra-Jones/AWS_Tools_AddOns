@@ -581,6 +581,8 @@ function Get-EC2InstanceList() {
     The saved EC2 profile to used to retrieve the data.
     .PARAMETER IncludeAccountId
     Include the account ID the EC2 INstance is in.
+    .PARAMETER NoProgress
+    Do not show the progress indicator.
     .OUTPUTS
     A collection of custom EC2 Instances.
     .NOTES
