@@ -126,6 +126,4 @@ Please note that you cannot set the vault to require a password if you are using
 This will cause the process to hang when trying to retrieve the keys.
 You must set Authentication and Interaction to 'none'.
 
-Added additional functions for retrieving permissions for IAM Users, Groups, and Roles.
-
 See the [Module reference](https://clifra-jones.github.io/AWS_Tools_AddOns/docs/reference.html) for more details on these functions.
