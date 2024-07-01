@@ -195,7 +195,7 @@ function Get-IAMGroupPermissions() {
     if ($GroupInlinePolicies) {            
         foreach ($GroupInlinePolicy in $GroupInLinePolicies) {
             $iamPolicy = Get-IAMGroupPolicy -PolicyName $GroupInlinePolicy -GroupName $GroupName
-            $PolicyDocument = [HttpUtility]::UrlDecode($IamPolicy.PolicyDocument)
+            $PolicyDocument = [HttpUtility]::UrlDecode($IamPolicy.PolicyDocument) | ConvertFrom-Json
 
             $Policy = [PsCustomObject]@{
                 PolicyName = $IamPolicy.PolicyName
@@ -258,8 +258,24 @@ function Get-IAMGroupPermissions() {
     --------------- ----------------------
     PolicyName      String
     Arn             String (Applicable for managed policies only)
-    PolicyDocument  JSON
+    PolicyDocument  PsObject
     PolicyType      String (either 'inline', 'AWSManaged', or 'Customer Managed')
+
+    The PolicyDocument (and the role AssumedRolePolicyDocument) have the following properties
+
+    Name                Type
+    ------------------- -------------------
+    Version             String
+    Statement           PsObject(s) May be a single object or an array.
+
+    The Statement Object has the following Properties
+
+    Name                 Type
+    -------------------- -------------------
+    Sid                  String
+    Effect               String (either Allow or Deny)
+    Actions              Array of String objects
+    Resource             String
     #>
 }
 
@@ -301,7 +317,7 @@ function Get-IAMUserPermissions() {
         $UserPermissions.InlinePolicies.Add($Policy)
     }
 
-    # Get an attached pPolicies for this user.
+    # Get any attached Policies for this user.
     $UserAttachedPolicies = Get-IAMAttachedUserPolicies -UserName $Username
     foreach ($UserAttachedPolicy in $UserAttachedPolicies) {
         $IamPolicy = Get-IAMPolicy -PolicyArn $UserAttachedPolicy.PolicyArn
@@ -320,7 +336,7 @@ function Get-IAMUserPermissions() {
         UserPermissions.Policies.Add($Policy)
     }
     
-    # Group
+    # Get any Groups that the user is a member of.
     $UserGroups = Get-IAMGroupForUser -UserName $IamUser.Username
     foreach ($UserGroup in $UserGroups) {   
         $Group = Get-IAMGroupPermissions -GroupName $UserGroup.GroupName
@@ -358,8 +374,24 @@ function Get-IAMUserPermissions() {
     ------------------- ---------------------
     PolicyName          String
     Arn                 String (Applicable for managed policies only)
-    PolicyDocument      JSON
+    PolicyDocument      PsObject
     PolicyType          String (either 'inline', 'AWSManaged', or 'Customer Managed')
+
+    The PolicyDocument (and the role AssumedRolePolicyDocument) have the following properties
+
+    Name                Type
+    ------------------- -------------------
+    Version             String
+    Statement           PsObject(s) May be a single object or an array.
+
+    The Statement Object has the following Properties
+
+    Name                 Type
+    -------------------- -------------------
+    Sid                  String
+    Effect               String (either Allow or Deny)
+    Actions              Array of String objects
+    Resource             String
     #>
 }
 
@@ -374,8 +406,7 @@ function Get-IAMRolePermissions() {
 
     $IamRole = Get-IAMRole -RoleName $RoleName
 
-    $AssumeRolePolicyDocument = [HttpUtility]::UrlDecode($IamRole.AssumeRolePolicyDocument)
-
+    $AssumeRolePolicyDocument = [HttpUtility]::UrlDecode($IamRole.AssumeRolePolicyDocument) | ConvertFrom-Json
 
     $Role = [PSCustomObject]@{
         Arn = $IamRole.Arn
@@ -394,7 +425,7 @@ function Get-IAMRolePermissions() {
     If ($RoleInlinePolicies) {
         foreach ($RoleInlinePolicy in $RoleInlinePolicies) {
             $IamPolicy = Get-IAMRolePolicy -PolicyName $RoleInlinePolicy -RoleName $RoleName
-            $PolicyDocument = [HttpUtility]::UrlDecode($IamPolicy.PolicyDocument)
+            $PolicyDocument = [HttpUtility]::UrlDecode($IamPolicy.PolicyDocument) | ConvertFrom-Json
 
             $Policy = [PSCustomObject]@{
                 PolicyName = $IamPolicy.PolicyName
@@ -411,15 +442,15 @@ function Get-IAMRolePermissions() {
     if ($RoleAttachedPolicies) {
         foreach ($RoleAttachedPolicy in $RoleAttachedPolicies) {
             $IamPolicy = Get-IamPolicy -PolicyArn $RoleAttachedPolicy.PolicyArn
-            if ($IamPolicy.arn -like "*aws:policy") {
+            if ($IamPolicy.arn -like "*aws:policy*") {
                 $PolicyType = 'AWS Managed'
             } else {
                 $PolicyType = 'Customer Managed'
             }
-            $VersionId = (Get-IAMPolicyVersions -PolicyArn $IamPolicy.PolicyArn | Where-Object {$_.IsDefault -eq $True}).VersionId
-            $PolicyDocument = [HttpUtility]::UrlDecode((Get-IAMPolicyVersion -PolicyArn $IamPolicy.Arn -VersionId $VersionId).Document)
+            $VersionId = (Get-IAMPolicyVersions -PolicyArn $IamPolicy.Arn | Where-Object {$_.IsDefaultVersion -eq $True}).VersionId
+            $PolicyDocument = [HttpUtility]::UrlDecode((Get-IAMPolicyVersion -PolicyArn $IamPolicy.Arn -VersionId $VersionId).Document) | ConvertFrom-Json
             $Policy = [PSCustomObject]@{
-                PolicyName = $IamPolicy.Name
+                PolicyName = $IamPolicy.PolicyName
                 Arn = $IamPolicy.Arn
                 PolicyDocument = $PolicyDocument
                 $PolicyType = $PolicyType
@@ -438,9 +469,9 @@ function Get-IAMRolePermissions() {
     .PARAMETER RoleName
     The name of the role.
     .OUTPUTS
-    An object with the following properties.
+    A role permissions object.
     .NOTES
-    The Role object has the following properties.
+    The Role permissions object has the following properties.
 
     Name                        Type
     --------------------------- ----------------
@@ -449,8 +480,8 @@ function Get-IAMRolePermissions() {
     RoleId                      String
     CreateDate                  DateTime
     MaxSessionDuration          Integer
-    AssumeRolePolicyDocument    JSON
-    Policies                    Collection og Policies assigned to the role.
+    AssumeRolePolicyDocument    PsObject
+    Policies                    Collection of Policies assigned to the role.
 
     The Policy objects in the Policies collection have the following properties.
 
@@ -458,8 +489,24 @@ function Get-IAMRolePermissions() {
     ------------------- -------------------
     PolicyName          String
     Arn                 String (Applicable for managed policies only)
-    PolicyDocument      JSON
+    PolicyDocument      PsObject
     PolicyType          String (either 'inline', 'AWSManaged', or 'Customer Managed')
+
+    The PolicyDocument (and the role AssumedRolePolicyDocument) have the following properties
+
+    Name                Type
+    ------------------- -------------------
+    Version             String
+    Statement           PsObject(s) May be a single object or an array.
+
+    The Statement Object has the following Properties
+
+    Name                 Type
+    -------------------- -------------------
+    Sid                  String
+    Effect               String (either Allow or Deny)
+    Actions              Array of String objects
+    Resource             String
     #>
 }
 
