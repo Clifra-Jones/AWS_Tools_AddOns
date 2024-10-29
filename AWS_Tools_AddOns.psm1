@@ -1,4 +1,4 @@
-
+# Updated
 function Get-S3Folder () {
     Param(
         [Parameter(Mandatory = $true )]
@@ -513,8 +513,9 @@ function Get-IAMRolePermissions() {
 function Get-EC2InstanceList() {
     [CmdletBinding()]
     Param(
+        [string]$Name,
+        [string]$INstanceId,
         [string]$ProfileName,
-        [switch]$IncludeAccountId,
         [switch]$NoProgress
     )
 
@@ -526,24 +527,65 @@ function Get-EC2InstanceList() {
         }
     }
 
-    $EC2InstanceList = [List[psObject]]::New()
+    # Get accociated data and create indexed lists
 
-    $EC2Instances = (Get-EC2instance).Instances
+    $Ec2Subnets = @{}
+    Get-EC2Subnet | ForEach-Object {
+        $Ec2Subnets.Add($_.SubnetId, $_)
+    }
+
+    $EC2INstanceTypes = @{}
+    Get-EC2InstanceType | Foreach-Object {
+        $EC2INstanceTypes.Add($_.INstanceType, $_)
+    }
+
+    $EC2InstanceStatus = @{}
+    Get-EC2InstanceStatus | ForEach-Object {
+        $EC2InstanceStatus.Add($_.Instanceid, $_)
+    }
+
+
+    $EC2InstanceList = [List[psObject]]::New()
+    
+    if ($INstanceId) {
+        [array]$EC2Instances = (Get-EC2Instance -InstanceId $InstanceId).Instances 
+    } elseIf ($Name) {
+        [array]$EC2INstances = (Get-EC2Instance).Instances | Where-Object {$_.Tags[$_.Tags.Key.IndexOf("Name")].Value -eq $Name}
+    } else {
+        [array]$EC2Instances = (Get-EC2instance).Instances
+    }
+        
+    $AccountId = (Get-STSCallerIdentity).Account
+    
     foreach ($EC2Instance in $EC2INstances) {        
         $Tags = $EC2Instance.Tags
         $Name = $Tags[$Tags.Key.IndexOf("Name")].Value
-        if (-not $NoProgress) {
-            Write-Progress -Activity "Getting EC2 INstances" -Status $Name -PercentComplete (($EC2Instances.IndexOf($EC2Instance) / $EC2Instances.Count) * 100)
-        }
+        
         $State = $EC2Instance.State.Name
-        $AvailabilityZone = (Get-EC2InstanceStatus -InstanceId $EC2Instance.InstanceId -IncludeAllInstance $true).AvailabilityZone
+        $AvailabilityZone = $EC2InstanceStatus[$EC2Instance.InstanceId].AvailabilityZone  #(Get-EC2InstanceStatus -InstanceId $EC2Instance.InstanceId -IncludeAllInstance $true).AvailabilityZone
         $SecurityGroup = $EC2INstance.SecurityGroups.GroupName -join ","
-        $SubnetTags = (Get-EC2Subnet -SubnetId $EC2Instance.SubnetId).Tags 
+        $SubnetTags = $Ec2Subnets[$EC2Instance.SubnetId].Tags #(Get-EC2Subnet -SubnetId $EC2Instance.SubnetId).Tags 
         if ($SubnetTags) {
             $SubnetName = $SubnetTags[$SubnetTags.Key.IndexOf("Name")].Value
         } else {
             $SubnetName = $null
         }
+        
+        $InstanceType = $EC2INstanceTypes[$EC2INstance.InstanceType] #Get-EC2InstanceType -InstanceType $EC2Instance.InstanceType
+        $ProcessorMfr = $InstanceType.ProcessorInfo.Manufacturer
+        $ProcessorArchitectures = $InstanceType.ProcessorInfo.SupportedArchitectures
+        $ProcessorFeatures = $InstanceType.ProccessorInfo.SupportedFeatures
+        $ProcessorClockSpeed = $InstanceType.ProcessorInfo.SustainedClockSpeedInGhz
+        if ($InstanceType.InstanceStorageSupported) {
+            $InstanceStorageSupported = $InstanceType.InstanceStorageSupported
+            $InstanceStorageNvmeSupport = $InstanceType.InstanceStorageInfo.NvmeSupport
+            $InstanceStorageEncryption = $InstanceType.InstanceStorageInfo.EncryptionSupport
+            $InstanceStorageSize = $InstanceType.InstanceStorageInfo.TotalSizeInGB
+            $InstanceStorageType = $InstanceType.InstanceStorageInfo.Disks.Type
+        }
+        $Memory = $InstanceType.memoryInfo.SizeInMiB / 1024
+        $EnaSupported = $InstanceType.NetworkInfo.EnaSupport
+        $NetworkPerformance = $InstanceType.NetworkInfo.NetworkPerformance
 
         $Instance = [PSCustomObject]@{
             Name = $Name
@@ -563,12 +605,22 @@ function Get-EC2InstanceList() {
             LaunchTime = $EC2Instance.LaunchTime
             Platform = $EC2Instance.PlatformDetails
             Instance = $EC2Instance
+            ProcessorMgr = $ProcessorMfr
+            ProcessorArchitecture = $ProcessorArchitectures
+            ProcessorFeatures = $ProcessorFeatures
+            ProcessorClockSpeed = $ProcessorClockSpeed
+            InstanceStorageSupported = $InstanceStorageSupported
+            InstanceStorageNvmeSupport = $InstanceStorageNvmeSupport
+            InstanceStorageEncryption = $InstanceStorageEncryption
+            InstanceStorageSize = $InstanceStorageSize
+            InstanceStorageType = $InstanceStorageType
+            Memory = $Memory
+            EnaSupported = $EnaSupported
+            NetworkPerformance = $NetworkPerformance
+            AccountId = $AccountId
         }
 
-        If ($IncludeAccountId) {
-            $AccountId = (Get-STSCallerIdentity).Account
-            $Instance | Add-Member -MemberType NoteProperty -Name "AccountId" -Value $AccountId
-        }
+
         $EC2InstanceList.Add($Instance)
     }
     return $EC2InstanceList.ToArray()

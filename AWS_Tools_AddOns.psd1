@@ -51,12 +51,12 @@ PowerShellVersion = '7.0'
 # ProcessorArchitecture = ''
 
 # Modules that must be imported into the global environment prior to importing this module
-RequiredModules = @(
-    'AWS.Tools.Common', 
+RequiredModules = @( 
     'AWS.Tools.S3', 
     'AWS.Tools.EC2',
     'Microsoft.PowerShell.SecretManagement',
     'Microsoft.PowerShell.SecretStore'
+    'AWS.Tools.SecurityToken'
     )
 
 # Assemblies that must be loaded prior to importing this module
