@@ -20,9 +20,17 @@ These functions were created for working with AWS in PowerShell.
 Set-SecretVault
 Set-Secure-AwsCredentials
 
+10/29/2024: Added additional properties to the object returned by Get-EC2INstanceList
+
 See the module reference for details.
 
-### Aws S3 Helper Functions
+> [!NOTE]
+> This module is a continuous work in progress. You should watch this repository for any published changes.
+>
+> The module version will be incremented when changes are published to the Powershell Gallery.
+
+
+### AWS S3 Helper Functions
 
 AWS S3 does not have the concept of folders. While browsing S3 buckets in the AWS console it appears the show folder you can drill down into, these are not actually folders in the Windows Explorer sense. They are just a common prefix that an object has.
 
@@ -117,6 +125,28 @@ There are 3 functions for getting the permissions (inline and attached Policies)
 
 ### Secure Access Key Storage Functions
 
+> [!IMPORTANT]
+> These functions were created to enable our staff to use AWS Access Keys in a more secure fashion. We have since moved on to using Identity Center SSO for interactive sessions.
+> 
+> As noted below the credential process will hang if the vault has a password. This makes this process unsafe for interactive sessions.
+> 
+> We have determined that the credential process defined in the AWS credential file is problematic.
+> 
+> A more stable approach for automation is to retrieve the access keys from the local secrets store and apply them using Set-AWSCredential.
+> 
+> Example:
+> 
+> \$Creds = Get-Secret MyAWSKeys -AsPlainText | ConvertFrom-JSON
+> 
+> Set-AWSCredential -AccessKey \$Creds.AccessKey -SecretAccessKey $Creds.SecretAccessKey
+> 
+> Subsequent commands will run under these credentials
+> 
+> This method does not depend of storing anything in the local credential file.
+>
+> These methods will most likely be depreciated in future releases.
+
+
 There are 2 functions that facilitate creating secured AWS Access keys.
 
 * Set-SecretVault
@@ -127,3 +157,4 @@ This will cause the process to hang when trying to retrieve the keys.
 You must set Authentication and Interaction to 'none'.
 
 See the [Module reference](https://clifra-jones.github.io/AWS_Tools_AddOns/docs/reference.html) for more details on these functions.
+

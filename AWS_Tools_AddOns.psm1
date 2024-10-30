@@ -515,8 +515,8 @@ function Get-EC2InstanceList() {
     Param(
         [string]$Name,
         [string]$INstanceId,
-        [string]$ProfileName,
-        [switch]$NoProgress
+        [string]$ProfileName
+
     )
 
     If ($ProfileName) {
@@ -573,6 +573,8 @@ function Get-EC2InstanceList() {
         
         $InstanceType = $EC2INstanceTypes[$EC2INstance.InstanceType] #Get-EC2InstanceType -InstanceType $EC2Instance.InstanceType
         $ProcessorMfr = $InstanceType.ProcessorInfo.Manufacturer
+        $ProcessorDefaultCores = $InstanceType.vCpuInfo.DefaultCores
+        $ProcessorDefaultVCpus = $InstanceType.vCpuInfo.DefaultVCpus
         $ProcessorArchitectures = $InstanceType.ProcessorInfo.SupportedArchitectures
         $ProcessorFeatures = $InstanceType.ProccessorInfo.SupportedFeatures
         $ProcessorClockSpeed = $InstanceType.ProcessorInfo.SustainedClockSpeedInGhz
@@ -609,6 +611,8 @@ function Get-EC2InstanceList() {
             ProcessorArchitecture = $ProcessorArchitectures
             ProcessorFeatures = $ProcessorFeatures
             ProcessorClockSpeed = $ProcessorClockSpeed
+            ProcessorDefaultCores = $ProcessorDefaultCores
+            ProcessorDefaultVCpus = $ProcessorDefaultVCpus
             InstanceStorageSupported = $InstanceStorageSupported
             InstanceStorageNvmeSupport = $InstanceStorageNvmeSupport
             InstanceStorageEncryption = $InstanceStorageEncryption
