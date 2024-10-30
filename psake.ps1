@@ -30,8 +30,8 @@ Task Publish -depends Build {
 
 Task Build -depends Clean {
     # Generate updated reference page
-    . $PSScriptRoot/docs/makeDocs.ps1
-    
+    # . $PSScriptRoot/docs/makeDocs.ps1
+
     Copy-Item "$PSScriptRoot\*" -Destination $PublishDir -Exclude $Exclude -Recurse 
 }
 
