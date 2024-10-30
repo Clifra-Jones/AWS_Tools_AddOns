@@ -514,9 +514,8 @@ function Get-EC2InstanceList() {
     [CmdletBinding()]
     Param(
         [string]$Name,
-        [string]$INstanceId,
+        [string]$InstanceId,
         [string]$ProfileName
-
     )
 
     If ($ProfileName) {
@@ -527,32 +526,57 @@ function Get-EC2InstanceList() {
         }
     }
 
-    # Get accociated data and create indexed lists
-
     $Ec2Subnets = @{}
-    Get-EC2Subnet | ForEach-Object {
-        $Ec2Subnets.Add($_.SubnetId, $_)
-    }
-
     $EC2INstanceTypes = @{}
-    Get-EC2InstanceType | Foreach-Object {
-        $EC2INstanceTypes.Add($_.INstanceType, $_)
-    }
-
     $EC2InstanceStatus = @{}
-    Get-EC2InstanceStatus | ForEach-Object {
-        $EC2InstanceStatus.Add($_.Instanceid, $_)
-    }
 
+   function Get-AssociatedData() {
+        Param (
+            [PsObject]$Instance
+        )
+    
+        # Get accociated data and create indexed lists
+
+
+        $Params = @{}
+        if ($Instance) {
+            $Params.Add("SubnetId", $Instance.SubnetId)
+        }
+        Get-EC2Subnet @Params | ForEach-Object {
+            $Ec2Subnets.Add($_.SubnetId, $_)
+        }
+
+
+        $Params = @{}
+        if ($Instance) {
+            $Params.Add("InstanceType", $Instance.InstanceType)
+        }
+        Get-EC2InstanceType @Params | Foreach-Object {
+            $EC2INstanceTypes.Add($_.InstanceType, $_)
+        }
+
+
+        $Params = @{}
+        if ($Instance) {
+            $Params.Add("InstanceId", $Instance.InstanceId)
+        }
+        Get-EC2InstanceStatus @Params | ForEach-Object {
+            $EC2InstanceStatus.Add($_.Instanceid, $_)
+        }
+
+    }
 
     $EC2InstanceList = [List[psObject]]::New()
     
-    if ($INstanceId) {
+    if ($InstanceId) {
         [array]$EC2Instances = (Get-EC2Instance -InstanceId $InstanceId).Instances 
+        Get-AccociatedData -Instance $EC2Instances[0]
     } elseIf ($Name) {
         [array]$EC2INstances = (Get-EC2Instance).Instances | Where-Object {$_.Tags[$_.Tags.Key.IndexOf("Name")].Value -eq $Name}
+        Get-AssociatedData -Instance $EC2Instances[0]
     } else {
         [array]$EC2Instances = (Get-EC2instance).Instances
+        Get-AssociatedData
     }
         
     $AccountId = (Get-STSCallerIdentity).Account
@@ -573,10 +597,8 @@ function Get-EC2InstanceList() {
         
         $InstanceType = $EC2INstanceTypes[$EC2INstance.InstanceType] #Get-EC2InstanceType -InstanceType $EC2Instance.InstanceType
         $ProcessorMfr = $InstanceType.ProcessorInfo.Manufacturer
-        $ProcessorDefaultCores = $InstanceType.vCpuInfo.DefaultCores
-        $ProcessorDefaultVCpus = $InstanceType.vCpuInfo.DefaultVCpus
         $ProcessorArchitectures = $InstanceType.ProcessorInfo.SupportedArchitectures
-        $ProcessorFeatures = $InstanceType.ProccessorInfo.SupportedFeatures
+        #$ProcessorFeatures = $InstanceType.ProccessorInfo.SupportedFeatures
         $ProcessorClockSpeed = $InstanceType.ProcessorInfo.SustainedClockSpeedInGhz
         if ($InstanceType.InstanceStorageSupported) {
             $InstanceStorageSupported = $InstanceType.InstanceStorageSupported
@@ -609,10 +631,8 @@ function Get-EC2InstanceList() {
             Instance = $EC2Instance
             ProcessorMgr = $ProcessorMfr
             ProcessorArchitecture = $ProcessorArchitectures
-            ProcessorFeatures = $ProcessorFeatures
+            #ProcessorFeatures = $ProcessorFeatures
             ProcessorClockSpeed = $ProcessorClockSpeed
-            ProcessorDefaultCores = $ProcessorDefaultCores
-            ProcessorDefaultVCpus = $ProcessorDefaultVCpus
             InstanceStorageSupported = $InstanceStorageSupported
             InstanceStorageNvmeSupport = $InstanceStorageNvmeSupport
             InstanceStorageEncryption = $InstanceStorageEncryption
@@ -632,34 +652,15 @@ function Get-EC2InstanceList() {
     .SYNOPSIS
     Returns a list of EC2 Instances
     .DESCRIPTION 
-    REturns a list of EC2 INstances with relevant properties.
+    Returns a list of EC2 INstances with relevant properties.
+    .PARAMETER Name
+    Returns a single instance with this name (The value of ther Tag: Name)
+    .PARAMETER InstanceId
+    Returns a single instance with this instance Id/
     .PARAMETER ProfileName
     The saved EC2 profile to used to retrieve the data.
-    .PARAMETER IncludeAccountId
-    Include the account ID the EC2 INstance is in.
-    .PARAMETER NoProgress
-    Do not show the progress indicator.
     .OUTPUTS
-    A collection of custom EC2 Instances.
-    .NOTES
-    Each EC2 instance object has the following properties.
-
-    Name                Type        Description
-    ------------------- ---------   -------------------------
-    Name                String      Name of the Instance.
-    InstanceId          String      Instance identifier.
-    InstanceState       String      The state of the instance (Stopped or Running).
-    InstanceType        String      The Instance type.
-    AvailabilityZone    String      The availability zone the instance is in.
-    SecurityGroup       String      The Security Groups assigned to the Instance.
-    KeyName             String      The KMS Key assigned to the Instance.
-    PrivateIpAddress    String      The Private IP address assigned to the Instance.
-    PrivateDNSName      String      The Private DNS Name assigned to the instance.
-    PublicIPAddress     String      The Public IP address assigned tot he instance.
-    PublicDNSName       String      The Public DNS name assigned to the instance.
-    SubnetId            String      The Subnet Assigned to the instance.
-    Subnet              String      The Subnet Name.
-    Platform            String      The Instance Platform i.e Windows Linux
+    A collection of custom EC2 Instance objects.
     #>
 }
 
@@ -825,7 +826,7 @@ function Get-DiskMappings() {
     LIst disk mappings on an EC2 Instance.
     .DESCRIPTION
     List the disk mappings on an EC2 instance to reference the volume ID with the Windows volume and drive letter.
-    This function must be run on an EC2 Windows instance.
+    This function is only supported on EC2 Windows instance.
     .OUTPUTS
     An array of disk objects.
     #>
