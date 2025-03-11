@@ -570,7 +570,7 @@ function Get-EC2InstanceList() {
     
     if ($InstanceId) {
         [array]$EC2Instances = (Get-EC2Instance -InstanceId $InstanceId).Instances 
-        Get-AccociatedData -Instance $EC2Instances[0]
+        Get-AssociatedData -Instance $EC2Instances[0]
     } elseIf ($Name) {
         [array]$EC2INstances = (Get-EC2Instance).Instances | Where-Object {$_.Tags[$_.Tags.Key.IndexOf("Name")].Value -eq $Name}
         Get-AssociatedData -Instance $EC2Instances[0]
@@ -639,6 +639,7 @@ function Get-EC2InstanceList() {
             InstanceStorageSize = $InstanceStorageSize
             InstanceStorageType = $InstanceStorageType
             Memory = $Memory
+            Tags = $Tags
             EnaSupported = $EnaSupported
             NetworkPerformance = $NetworkPerformance
             AccountId = $AccountId
@@ -652,9 +653,9 @@ function Get-EC2InstanceList() {
     .SYNOPSIS
     Returns a list of EC2 Instances
     .DESCRIPTION 
-    Returns a list of EC2 INstances with relevant properties.
+    Returns a list of EC2 Instances with relevant properties.
     .PARAMETER Name
-    Returns a single instance with this name (The value of ther Tag: Name)
+    Returns a single instance with this name (The value of the Tag: Name)
     .PARAMETER InstanceId
     Returns a single instance with this instance Id/
     .PARAMETER ProfileName

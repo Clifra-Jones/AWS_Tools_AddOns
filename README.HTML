@@ -1,0 +1,169 @@
+<html>
+<head></head>
+<Body>
+<h1 id="aws_tools_addons-module">AWS_Tools_AddOns Module</h1>
+<p>Additional tools for working with AWS.Tools for Powershell</p>
+<p>Author: Cliff Williams</p>
+<p>ModuleVersion: 1.0.0</p>
+<p>Company Name: Balfour Beatty US</p>
+<p>Copyright: (c) Balfour Beatty US. All rights reserved.</p>
+<p>License: <a href="https://opensource.org/licenses/MS-PL">Microsoft
+Public License</a></p>
+<h2 id="helper-functions-for-working-with-aws-in-powershell">Helper
+functions for working with AWS in Powershell</h2>
+<p>These functions were created for working with AWS in PowerShell.</p>
+<p>1/11/2024: Added 2 additional function to store AWS Access Keys in a
+Secure Vault. Set-SecretVault Set-Secure-AwsCredentials</p>
+<p>10/29/2024: Added additional properties to the object returned by
+Get-EC2INstanceList</p>
+<p>See the module reference for details.</p>
+<blockquote>
+<p>[!NOTE] This module is a continuous work in progress. You should
+watch this repository for any published changes.</p>
+<p>The module version will be incremented when changes are published to
+the Powershell Gallery.</p>
+</blockquote>
+<h3 id="aws-s3-helper-functions">AWS S3 Helper Functions</h3>
+<p>AWS S3 does not have the concept of folders. While browsing S3
+buckets in the AWS console it appears the show folder you can drill down
+into, these are not actually folders in the Windows Explorer sense. They
+are just a common prefix that an object has.</p>
+<p>For example: An object listed in the console as:</p>
+<ul>
+<li>Folder1
+<ul>
+<li>Folder2
+<ul>
+<li>file.txt</li>
+</ul></li>
+</ul></li>
+</ul>
+<p>Actually has the object key as /Folder1/Folder2/file.txt</p>
+<p>The Get-S3Object function in the AWS.Tools.S3 module will return ALL
+object that match the provided prefix. So in our example:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>Get<span class="op">-</span>S3Object <span class="op">-</span>BucketName mybucket <span class="op">-</span>Prefix Folder1\</span></code></pre></div>
+<p>Will return all objects with a prefix beginning with ‘Folder1’. In
+our example that may not be bad but in an S3 bucket with hundreds or
+thousands of objects with many longer prefixes this becomes very
+cumbersome to find the object(s) you are looking for.</p>
+<p>The Get-S3Folder function lets you return ONLY the object that share
+a common prefix at the level of the provided prefix.</p>
+<p>With our example above.</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>Get<span class="op">-</span>S3Folder <span class="op">-</span>BucketName mybucket <span class="op">-</span>Prefix Folder1</span></code></pre></div>
+<p>Will return an array containing one key object with the value:
+Folder1/Folder2</p>
+<p>The command:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>Get<span class="op">-</span>S3Folder <span class="op">-</span>BucketName mybucket <span class="op">-</span>Prefix Folder1\Folder2</span></code></pre></div>
+<p>Will return an array containing one Key objects with the value:
+Folder1/Folder2/file.txt</p>
+<p>This makes it easy to find objects or prefixes you are looking for.
+Lets say you have an S3 bucket with thousands of objects with very deep
+prefixes. Now you want to find the prefix under the ‘projects’ “folder”
+that contains “Highway-196”. You can do that with the following:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>Get<span class="op">-</span>S3Folder <span class="op">-</span>BucketName projectfiles <span class="op">-</span>Prefix projects <span class="op">|</span> <span class="fu">Where-Object</span> <span class="op">{</span><span class="va">$_</span><span class="op">.</span><span class="fu">Key</span> <span class="op">-</span>like <span class="st">&quot;*Highway-196*&quot;</span><span class="op">}</span></span></code></pre></div>
+<p>This returns a single key object with the value:
+projects/Highway-196-Project”</p>
+<p>Another issue with the standard S3 functions is restoring S3 objects
+from Glacier. The Restore-S3Object function can only restore a single
+object. While you could gather an array of objects and pipe them to this
+command that could get tedious. The Restore-S3Folder function makes this
+quite easy.</p>
+<p>Using the “Highway 196” example above. We now know that the common
+prefix value for the Highway 196 project files is
+“projects/Highway-196-Project”</p>
+<p>So to restore all the objects that have a common prefix (are in the
+folder and sub-folders) “Highway-196-Project” We would do:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>Restore<span class="op">-</span>S3Folder <span class="op">-</span>BucketName projectfiles <span class="op">-</span>Prefix <span class="st">&#39;projects/Highway-196-Project&#39;</span> <span class="op">-</span>CopyLifeTime 90 <span class="op">-</span>Tier Standard</span></code></pre></div>
+<p>Where CopyLifeTime is the number of days to keep the items in the
+restored storage class and Tier is the storage class to restore the
+items to.</p>
+<p>Standard Glacier restores can take up to 4 hours while deep glacier
+restores can take 12-24 hours. So, before you can download the items you
+need to know if the restore has completed. This again is not easy with
+the standard functions. So now we can use Get-S3RestoreProgress.</p>
+<p>For our example above:</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode powershell"><code class="sourceCode powershell"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>Get<span class="op">-</span>S3RestoreProgress <span class="op">-</span>BucketName projectfiles <span class="op">-</span>Prefix <span class="st">&#39;projects/Highway-196-Project&#39;</span> </span></code></pre></div>
+<p>This will return an array of objects for each object with the common
+prefix (In the folder and sub-folders) with these properties.</p>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Property</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Key</td>
+<td>The full key of the object</td>
+</tr>
+<tr class="even">
+<td>RestoreInProgress</td>
+<td>True if the restore is in progress, False if completed</td>
+</tr>
+<tr class="odd">
+<td>RestoreExpiration</td>
+<td>The date the item expires and returns to Glacier</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ec2-helper-functions">EC2 Helper Functions</h3>
+<h4 id="get-ec2instancelist">Get-EC2InstanceList</h4>
+<p>This function returns a list of custom EC2 Instance objects with
+valuable information about the instance. This information is gathered
+from many sources that the standard EC2 Instance object does not
+contain.</p>
+<h3 id="iam-helper-functions">IAM Helper Functions</h3>
+<p>There are 3 functions for getting the permissions (inline and
+attached Policies) assigned to IAM Users, Groups, and Roles</p>
+<ul>
+<li>Get-IAMUserPermissions</li>
+<li>Get-IAMGroupPermissions</li>
+<li>Get-IAMRolePermissions</li>
+</ul>
+<h3 id="secure-access-key-storage-functions">Secure Access Key Storage
+Functions</h3>
+<blockquote>
+<p>[!IMPORTANT] These functions were created to enable our staff to use
+AWS Access Keys in a more secure fashion. We have since moved on to
+using Identity Center SSO for interactive sessions.</p>
+<p>As noted below the credential process will hang if the vault has a
+password. This makes this process unsafe for interactive sessions.</p>
+<p>We have determined that the credential process defined in the AWS
+credential file is problematic.</p>
+<p>A more stable approach for automation is to retrieve the access keys
+from the local secrets store and apply them using Set-AWSCredential.</p>
+<p>Example:</p>
+<p>$Creds = Get-Secret MyAWSKeys -AsPlainText | ConvertFrom-JSON</p>
+<p>Set-AWSCredential -AccessKey $Creds.AccessKey -SecretAccessKey
+$Creds.SecretAccessKey</p>
+<p>Subsequent commands will run under these credentials</p>
+<p>This method does not depend of storing anything in the local
+credential file.</p>
+<p>These methods will most likely be depreciated in future releases.</p>
+</blockquote>
+<p>There are 2 functions that facilitate creating secured AWS Access
+keys.</p>
+<ul>
+<li>Set-SecretVault</li>
+<li>Set-SecureAWSCredentials</li>
+</ul>
+<p>Please note that you cannot set the vault to require a password if
+you are using this vault for secure access keys. This will cause the
+process to hang when trying to retrieve the keys. You must set
+Authentication and Interaction to ‘none’.</p>
+<p>See the <a
+href="https://clifra-jones.github.io/AWS_Tools_AddOns/docs/reference.html">Module
+reference</a> for more details on these functions.</p>
+</Body>
+</html>
