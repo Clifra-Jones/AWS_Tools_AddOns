@@ -727,8 +727,6 @@ function Get-EC2InstanceList() {
     https://docs.aws.amazon.com/powershell/latest/reference/items/Get-EC2Instance.html
     .PARAMETER ProfileName
     The saved EC2 profile to used to retrieve the data.
-    .OUTPUTS
-    A collection of custom EC2 Instance objects.
     .EXAMPLE
     Get-EC2InstanceList -Name "MyInstance"
     Returns a single instance with the name "MyInstance"
@@ -750,6 +748,41 @@ function Get-EC2InstanceList() {
     .EXAMPLE
     Get-EC2InstanceList
     Returns all instances.
+    .OUTPUTS
+    A collection of custom EC2 Instance objects with the following properties.
+
+    Name                       : AWSWORKATOPROD2
+    InstanceId                 : i-08001da8c43088586
+    InstanceState              : running
+    InstanceType               : t3a.xlarge
+    ImageId                    : ami-0a0ebee827a585d06
+    AvailabilityZone           : us-east-1b
+    SecurityGroup              : Any-Any_Internal_IP-ICMP
+    KeyName                    : PRODUCTION-KEY
+    PrivateIpAddress           : 10.7.52.212
+    PrivateDnsName             : ip-10-7-52-212.ec2.internal
+    PublicIPAddress            : 
+    PublicDNSName              : 
+    SubnetId                   : subnet-d2b9f98f
+    Subnet                     : PRIVATE-1b
+    LaunchTime                 : 2/10/2025 3:55:58 PM
+    Platform                   : Windows
+    Instance                   : Amazon.EC2.Model.Instance
+    ProcessorMgr               : AMD
+    ProcessorArchitecture      : {x86_64}
+    ProcessorCPUs              : 4
+    ProcessorCores             : 2
+    ProcessorClockSpeed        : 2.2
+    InstanceStorageSupported   : True
+    InstanceStorageNvmeSupport : required
+    InstanceStorageEncryption  : required
+    InstanceStorageSize        : 237
+    InstanceStorageType        : ssd
+    Memory                     : 16
+    Tags                       : {Environment, Landscape, Class, backupAction…}
+    EnaSupported               : required
+    NetworkPerformance         : Up to 5 Gigabit
+    AccountId                  : 268928949034
     #>
 }
 

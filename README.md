@@ -14,6 +14,12 @@ License: [Microsoft Public License](https://opensource.org/licenses/MS-PL)
 
 ## Helper functions for working with AWS in Powershell
 
+03/12/2025: 
+Get-EC2INstanceList
+  Added a filter property
+  Modified method of retrieving associated data to only retrieve data for the selected instances. This improved performance.
+  Added a progress indicator. It can be turned off with -Hide Progress.
+
 These functions were created for working with AWS in PowerShell.
 
 1/11/2024: Added 2 additional function to store AWS Access Keys in a Secure Vault.
