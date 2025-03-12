@@ -1,3 +1,5 @@
+#include namespace System.Collections.Generic
+
 # Updated
 function Get-S3Folder () {
     Param(
@@ -515,7 +517,9 @@ function Get-EC2InstanceList() {
     Param(
         [string]$Name,
         [string]$InstanceId,
-        [string]$ProfileName
+        [string]$Filter,
+        [string]$ProfileName,
+        [switch]$HideProgress
     )
 
     If ($ProfileName) {
@@ -527,58 +531,110 @@ function Get-EC2InstanceList() {
     }
 
     $Ec2Subnets = @{}
-    $EC2INstanceTypes = @{}
+    $EC2InstanceTypes = @{}
     $EC2InstanceStatus = @{}
 
    function Get-AssociatedData() {
         Param (
-            [PsObject]$Instance
+            [PsObject[]]$Instance
         )
     
-        # Get accociated data and create indexed lists
+        # Get associated data and create indexed lists     
 
-
-        $Params = @{}
         if ($Instance) {
-            $Params.Add("SubnetId", $Instance.SubnetId)
-        }
-        Get-EC2Subnet @Params | ForEach-Object {
-            $Ec2Subnets.Add($_.SubnetId, $_)
-        }
+            
+            $SubNets = $Instance | Get-EC2Subnet
+            $Subnets | Foreach-Object {
+                $Ec2Subnets[$_.SubnetId] = $_
+            }            
+            If (-not $HideProgress) {
+                Write-Progress -Activity "Getting Associated Data" -Status "Getting Subnets" -PercentComplete 33
+            }
 
+            $InstanceTypes = $Instance | Get-EC2InstanceType
+            $InstanceTypes | ForEach-Object {
+                $EC2InstanceTypes[$_.InstanceType] = $_
+            }
+            If (-not $HideProgress) {
+                Write-Progress -Activity "Getting Associated Data" -Status "Getting Instance Type" -PercentComplete 66
+            }
+            
+            $InstanceStatus = $Instance | Get-EC2InstanceStatus
+            $InstanceStatus | ForEach-Object {
+                $EC2InstanceStatus[$_.InstanceId] = $_
+            }            
+            If (-not $HideProgress) {
+                Write-Progress -Activity "Getting Associated Data" -Status "Getting Instance Status" -PercentComplete 100
+            }
+        } else {
+            $SubNets = Get-EC2Subnet
+            $Subnets | Foreach-Object {
+                $Ec2Subnets[$_.SubnetId] = $_
+            }   
+            If (-not $HideProgress) {
+                Write-Progress -Activity "Getting Associated Data" -Status "Getting Subnets" -PercentComplete 33
+            }  
 
-        $Params = @{}
-        if ($Instance) {
-            $Params.Add("InstanceType", $Instance.InstanceType)
-        }
-        Get-EC2InstanceType @Params | Foreach-Object {
-            $EC2INstanceTypes.Add($_.InstanceType, $_)
-        }
+            $InstanceTypes = Get-EC2InstanceType
+            $InstanceTypes | ForEach-Object {
+                $EC2InstanceTypes[$_.InstanceType] = $_
+            }
+            If (-not $HideProgress) {
+                Write-Progress -Activity "Getting Associated Data" -Status "Getting Instance Type" -PercentComplete 66
+            }
 
+            $InstanceStatus = Get-EC2InstanceStatus
+            $InstanceStatus | ForEach-Object {
+                $EC2InstanceStatus[$_.InstanceId] = $_
+            }
+            If (-not $HideProgress) {
+                Write-Progress -Activity "Getting Associated Data" -Status "Getting Instance Status" -PercentComplete 100
+            }
 
-        $Params = @{}
-        if ($Instance) {
-            $Params.Add("InstanceId", $Instance.InstanceId)
         }
-        Get-EC2InstanceStatus @Params | ForEach-Object {
-            $EC2InstanceStatus.Add($_.Instanceid, $_)
-        }
-
+        Write-Progress -Completed
     }
 
     $EC2InstanceList = [List[psObject]]::New()
     
+    if (-not $HideProgress) {
+        Write-Progress -Activity "Getting EC2 Instances" -Status "Getting Instances" -PercentComplete 0
+    }
     if ($InstanceId) {
         [array]$EC2Instances = (Get-EC2Instance -InstanceId $InstanceId).Instances 
-        Get-AssociatedData -Instance $EC2Instances[0]
+        # Get-AssociatedData -Instance $EC2Instances
     } elseIf ($Name) {
-        [array]$EC2INstances = (Get-EC2Instance).Instances | Where-Object {$_.Tags[$_.Tags.Key.IndexOf("Name")].Value -eq $Name}
-        Get-AssociatedData -Instance $EC2Instances[0]
+        $FilterName = "tag:Name"
+        $FilterValue = [List[string]]::New()
+        $FilterValue.Add($Name)
+        $Filter = [Amazon.EC2.Model.Filter]::New($FilterName, $FilterValue)
+        [array]$EC2INstances = (Get-EC2Instance -filter $Filter).Instances
+        # Get-AssociatedData -Instance $EC2Instances
+    } elseif ($Filter) {
+        $Filters = [List[Amazon.EC2.Model.Filter]]::New()
+        $FilterStrings = $Filter -split ";"
+        foreach ($FilterString in $FilterStrings) {
+            $FilterProps = $FilterString -split "="
+            $FilterName = $FilterProps[0]
+            $FilterValues = [List[string]]::New()
+            $FilterValueString = $FilterProps[1] -split ","
+            foreach ($FilterValue in $FilterValueString) {
+                $FilterValues.Add($FilterValue)
+            }
+            $Ec2Filter = [Amazon.ec2.Model.Filter]::New($FilterName, $FilterValues)
+            $Filters.Add($EC2Filter)
+        }
+        [array]$EC2Instances = (Get-EC2Instance -Filter $Filters.ToArray()).Instances
+        # Get-AssociatedData $EC2Instances
     } else {
         [array]$EC2Instances = (Get-EC2instance).Instances
-        Get-AssociatedData
+        # Get-AssociatedData
     }
-        
+
+    If ($EC2Instances) {
+        Get-AssociatedData -Instance $EC2Instances
+    }
+
     $AccountId = (Get-STSCallerIdentity).Account
     
     foreach ($EC2Instance in $EC2INstances) {        
@@ -598,6 +654,8 @@ function Get-EC2InstanceList() {
         $InstanceType = $EC2INstanceTypes[$EC2INstance.InstanceType] #Get-EC2InstanceType -InstanceType $EC2Instance.InstanceType
         $ProcessorMfr = $InstanceType.ProcessorInfo.Manufacturer
         $ProcessorArchitectures = $InstanceType.ProcessorInfo.SupportedArchitectures
+        $ProcessorVCPUs = $InstanceType.vCpuInfo.DefaultVCpus
+        $ProcessorCores = $InstanceTYpe.vCpuInfo.DefaultCores
         #$ProcessorFeatures = $InstanceType.ProccessorInfo.SupportedFeatures
         $ProcessorClockSpeed = $InstanceType.ProcessorInfo.SustainedClockSpeedInGhz
         if ($InstanceType.InstanceStorageSupported) {
@@ -631,6 +689,8 @@ function Get-EC2InstanceList() {
             Instance = $EC2Instance
             ProcessorMgr = $ProcessorMfr
             ProcessorArchitecture = $ProcessorArchitectures
+            ProcessorCPUs = $ProcessorVCPUs
+            ProcessorCores = $ProcessorCores
             #ProcessorFeatures = $ProcessorFeatures
             ProcessorClockSpeed = $ProcessorClockSpeed
             InstanceStorageSupported = $InstanceStorageSupported
@@ -658,10 +718,38 @@ function Get-EC2InstanceList() {
     Returns a single instance with this name (The value of the Tag: Name)
     .PARAMETER InstanceId
     Returns a single instance with this instance Id/
+    .PARAMETER Filter
+    Returns instances that match the filter. The filter is a string in the format "Property=Value;Property=Value"
+    Values can be multiple values separated by commas. These are a logical OR comparison.
+    Multiple filters are a logical AND comparison.
+    To filter on a tag use "tag:TagName=TagValue".
+    For a list of valid filter properties see the -Filter parameter of the Get-EC2Instance command in the AWS.Tools.EC2 documentation.
+    https://docs.aws.amazon.com/powershell/latest/reference/items/Get-EC2Instance.html
     .PARAMETER ProfileName
     The saved EC2 profile to used to retrieve the data.
     .OUTPUTS
     A collection of custom EC2 Instance objects.
+    .EXAMPLE
+    Get-EC2InstanceList -Name "MyInstance"
+    Returns a single instance with the name "MyInstance"
+    .EXAMPLE
+    Get-EC2InstanceList -Filter "tag:Name=MyInstance;tag:Environment=Production"
+    Returns instances with the tag Name=MyInstance and Environment=Production
+    .EXAMPLE
+    Get-EC2InstanceList -Filter "private-ip-address=10.7.48.*"
+    Returns instances with a private IP address that starts with 10.7.48
+    .EXAMPLE
+    Get-EC2InstanceList -Filter "instance.group-name=MYSecurityGroup"
+    Returns instances that are in the security group MYSecurityGroup.
+    .EXAMPLE
+    Get-EC2InstanceList -Filter "instance-state-name=running;tag:Environment=Production"
+    Returns instances that are running and have the tag Environment=Production 
+    .EXAMPLE
+    Get-EC2InstanceList -InstanceId "i-1234567890abcdef0"
+    Returns a single instance with the instance Id "i-1234567890abcdef0"
+    .EXAMPLE
+    Get-EC2InstanceList
+    Returns all instances.
     #>
 }
 
