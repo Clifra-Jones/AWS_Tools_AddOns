@@ -605,10 +605,9 @@ function Get-EC2InstanceList() {
         # Get-AssociatedData -Instance $EC2Instances
     } elseIf ($Name) {
         $FilterName = "tag:Name"
-        $FilterValue = [List[string]]::New()
-        $FilterValue.Add($Name)
-        $Filter = [Amazon.EC2.Model.Filter]::New($FilterName, $FilterValue)
-        [array]$EC2INstances = (Get-EC2Instance -filter $Filter).Instances
+        $FilterValue = @($Name)
+        $Ec2Filter = [Amazon.EC2.Model.Filter]::New($FilterName, $FilterValue)
+        [array]$EC2INstances = (Get-EC2Instance -filter $Ec2Filter).Instances
         # Get-AssociatedData -Instance $EC2Instances
     } elseif ($Filter) {
         $Filters = [List[Amazon.EC2.Model.Filter]]::New()
